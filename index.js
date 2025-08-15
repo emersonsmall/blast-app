@@ -6,10 +6,10 @@ const app = express();
 const port = 3000;
 app.use(express.json());
 
-// Simple hard-coded username and password for demonstration
+// Hard-coded username and password
 const users = {
-   CAB432: {
-      password: "supersecret",
+   user: {
+      password: "user",
       admin: false,
    },
    admin: {
