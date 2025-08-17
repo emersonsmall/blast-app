@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 
-// Middleware function to verify JWT
+// Authentication middleware to verify JWT
 exports.authenticateToken = (req, res, next) => {
    const authHeader = req.headers["authorization"];
    const token = authHeader && authHeader.split(" ")[1];
@@ -17,4 +17,15 @@ exports.authenticateToken = (req, res, next) => {
       req.user = user; // Attach user info to request
       next();
    });
+};
+
+
+// Authorisation middleware to check admin permissions
+exports.authoriseAdmin = (req, res, next) => {
+   if (req.user && req.user.admin) {
+      next();
+   } else {
+      console.log(`Forbidden: User '${req.user}' attempted to access admin route.`);
+      return res.sendStatus(403); // Forbidden
+   }
 };
