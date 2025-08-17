@@ -25,7 +25,7 @@ exports.authoriseAdmin = (req, res, next) => {
    if (req.user && req.user.admin) {
       next();
    } else {
-      console.log(`Forbidden: User '${req.user}' attempted to access admin route.`);
+      console.log(`Forbidden: User '${req.user.username}' attempted to access admin route.`);
       return res.sendStatus(403); // Forbidden
    }
 };

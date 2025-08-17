@@ -1,8 +1,10 @@
 require("dotenv").config();
 
-const tokenSecret = require("crypto").randomBytes(64).toString("hex");
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined in environment variables.");
+}
 
 module.exports = {
   port: process.env.PORT || 3000,
-  tokenSecret: process.env.JWT_SECRET || tokenSecret
+  tokenSecret: process.env.JWT_SECRET
 }
