@@ -3,9 +3,13 @@ const fs = require("fs");
 const path = require("path");
 const unzipper = require("unzipper");
 
-const jobs = []; // TODO: replace with job DB
+// TODO FIRST: add bioinformatics processing of FASTA files
+// TODO: separate download and processing steps - allow user to download ZIP and process later - 2 endpoints??
+// TODO: create jobs DB?
+// TODO: add results to jobs database, or new resuls table with job ID
+// TODO: use S3 for storing genome files instead of local filesystem
 
-// TODO: check if genome file/s already exist before downloading
+const jobs = [];
 
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 
