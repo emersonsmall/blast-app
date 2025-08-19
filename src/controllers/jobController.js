@@ -20,7 +20,7 @@ exports.createJob = async (req, res) => {
   const newJob = {
     id: jobs.length + 1,
     userId,
-    taxon: taxons,
+    taxons: taxons,
     processingType,
     status: "pending",
     createdAt: new Date(),
@@ -34,67 +34,94 @@ exports.createJob = async (req, res) => {
     message: "Job accepted and is now pending.",
   });
 
-  let tempZipPath = '';
-  let extractionPath = '';
+  processJob(newJob);
+};
+
+/**
+ * Processes a job by downloading a GenBank ZIP archive, extracting FASTA files, and performing bioinformatics processing.
+ * @param {Object} job - The job object containing details like taxon and processing type.
+ */
+async function processJob(job) {
+  let zipFilePath = '';
+  let extractionDir = '';
+  const tempDir = path.join(process.cwd(), "data", "temp");
 
   try {
     // get accession ID from GenBank
-    newJob.status = "fetching_accession_id";
-    console.log(`Job ${newJob.id} fetching accession ID for: ${taxons}`);
-    const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(taxons)}/dataset_report?filters.reference_only=true`;
+    job.status = "fetching_accession_id";
+    console.log(`Job ${job.id} fetching accession ID for: ${job.taxons}`);
+    const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(job.taxons)}/dataset_report?filters.reference_only=true`;
     const reportRes = await apiRequest(reportUrl);
     
     if (!reportRes.reports || reportRes.reports.length === 0) {
-      throw new Error(`No reference genomes found for the taxon/s ${taxons}.`);
+      throw new Error(`No reference genome/s found for taxon/s ${job.taxons}.`);
     }
 
     const accessionId = reportRes.reports[0].accession;
-    console.log(`Job ${newJob.id} found accession ID: ${accessionId}`);
+    console.log(`Job ${job.id} found accession ID: ${accessionId}`);
+    
+    zipFilePath = path.join(tempDir, `${accessionId}.zip`);
+    extractionDir = path.join(process.cwd(), "data", accessionId);
+    
+    if (!fs.existsSync(extractionDir)) {
+      // stream download to ZIP
+      job.status = "downloading_zip";
+      const downloadUrl = `${genbankApiBaseUrl}/genome/accession/${accessionId}/download?include_annotation_type=GENOME_FASTA&include_annotation_type=GENOME_GFF`;
+      
+      // create temp directory if it doesn't exist
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      
+      console.log(`Job ${job.id} downloading ZIP for accession ID: ${accessionId}`);
+      await downloadFile(downloadUrl, zipFilePath);
+      console.log(`Job ${job.id} downloaded ZIP to: ${zipFilePath}`);
+      
+      // unzip and extract
+      job.status = "extracting_files";
+      console.log(`Job ${job.id} extracting files to: ${extractionDir}`);
 
-    // stream download to ZIP
-    newJob.status = "downloading_zip";
-    console.log(`Job ${newJob.id} downloading ZIP for accession ID: ${accessionId}`);
-    const downloadUrl = `${genbankApiBaseUrl}/genome/accession/${accessionId}/download?include_annotation_type=GENOME_FASTA&include_annotation_type=GENOME_GFF`;
-
-    // create temp directory if it doesn't exist
-    const tempDir = path.join(process.cwd(), "data", "temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    tempZipPath = path.join(tempDir, `${accessionId}.zip`);
-
-    if (!fs.existsSync(tempZipPath)) {
-      await downloadFile(downloadUrl, tempZipPath);
-      console.log(`Job ${newJob.id} downloaded ZIP to: ${tempZipPath}`);
+      await unzipAndExtractFasta(zipFilePath, extractionDir);
+      console.log(`Job ${job.id} FASTA file found`);
     } else {
-      console.log(`Job ${newJob.id} ZIP already exists at: ${tempZipPath}`);
+      console.log(`Job ${job.id} FASTA already exists at: ${extractionDir}`);
     }
 
-    // unzip and extract
-    newJob.status = "extracting_files";
-    extractionPath = path.join(tempDir, `${accessionId}_extracted`);
-    console.log(`Job ${newJob.id} extracting files to: ${extractionPath}`);
-
-    const fastaFilePath = await unzipAndExtractFasta(tempZipPath, extractionPath);
-    console.log(`Job ${newJob.id} FASTA file found`);
-
     // process fasta file
-    newJob.status = "processing";
-    console.log(`Job ${newJob.id} processing FASTA file: ${fastaFilePath}`);
+    job.status = "processing";
+    console.log(`Job ${job.id} processing FASTA file`);
 
-
+    // result = ...
 
     // update job status to completed
-
+    job.status = "completed";
+    console.log(`Job ${job.id} completed successfully`);
+    
   } catch (err) {
-    console.error(`Job ${newJob.id} failed`, err.message);
-    newJob.status = "failed";
-    res.status(500).json({
-      id: newJob.id,
-      status: newJob.status,
-      message: `Job processing failed: ${err.message}`,
-    });
+    console.error(`Job ${job.id} failed`, err.message);
+    job.status = "failed";
+    job.error = err.message;
   }
 
-};
+  finally {
+    // remove temp ZIP file if it exists
+    if (fs.existsSync(zipFilePath)) {
+      fs.rm(zipFilePath);
+      console.log(`Job ${job.id} deleted ZIP file: ${zipFilePath}`);
+    }
+
+    try {
+      const files = fs.readdirSync(tempDir);
+      if (files.length === 0) {
+        fs.rmdirSync(tempDir);
+      }
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.error(`Error deleting temp directory:`, err.message);
+      }
+    }
+  }
+}
+
+// --- HELPER FUNCTIONS ---
 
 /**
  * Unzips a GenBank ZIP archive and extracts the relevant FASTA files.
