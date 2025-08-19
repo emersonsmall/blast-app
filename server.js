@@ -6,8 +6,6 @@ const authRoutes = require("./src/routes/api/v1/auth");
 const jobRoutes = require("./src/routes/api/v1/jobs");
 const pageRoutes = require("./src/routes/pages");
 
-const genbankApiUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
-
 const app = express();
 
 // Middleware
