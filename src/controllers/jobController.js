@@ -81,6 +81,7 @@ async function processJob(job) {
 
       await unzipAndExtractFasta(zipFilePath, extractionDir);
       console.log(`Job ${job.id} FASTA file found`);
+
     } else {
       console.log(`Job ${job.id} FASTA already exists at: ${extractionDir}`);
     }
@@ -88,6 +89,8 @@ async function processJob(job) {
     // process fasta file
     job.status = "processing";
     console.log(`Job ${job.id} processing FASTA file`);
+
+    
 
     // result = ...
 
@@ -102,16 +105,20 @@ async function processJob(job) {
   }
 
   finally {
-    // remove temp ZIP file if it exists
-    if (fs.existsSync(zipFilePath)) {
-      fs.rm(zipFilePath);
-      console.log(`Job ${job.id} deleted ZIP file: ${zipFilePath}`);
+    // delete ZIP file
+    try {
+      await fs.promises.unlink(zipFilePath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.error(`Error deleting ZIP file:`, err.message);
+      }
     }
 
+    // delete temp directory if empty
     try {
-      const files = fs.readdirSync(tempDir);
+      const files = await fs.promises.readdir(tempDir);
       if (files.length === 0) {
-        fs.rmdirSync(tempDir);
+        await fs.promises.rmdir(tempDir);
       }
     } catch (err) {
       if (err.code !== 'ENOENT') {
@@ -121,10 +128,11 @@ async function processJob(job) {
   }
 }
 
+
 // --- HELPER FUNCTIONS ---
 
 /**
- * Unzips a GenBank ZIP archive and extracts the relevant FASTA files.
+ * Unzips a ZIP archive and extracts the relevant FASTA file.
  * @param {string} zipPath - Path to the ZIP file.
  * @param {string} extractionPath - Directory to extract files to.
  * @return {Promise<string>} - Path to the extracted FASTA file.
@@ -149,7 +157,7 @@ async function unzipAndExtractFasta(zipPath, extractionPath) {
 }
 
 /**
- * Generic helper for API requests that return JSON
+ * Helper for API requests that return JSON
  */
 function apiRequest(url) {
   return new Promise((resolve, reject) => {

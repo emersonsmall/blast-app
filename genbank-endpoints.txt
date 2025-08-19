@@ -1,5 +1,0 @@
-GET /genome/taxon/{taxons}/dataset_report 
-for getting accession ID by approximate name/common name {taxons}
-
-
-for getting/downloading genome fasta file by accession ID

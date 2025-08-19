@@ -10,7 +10,7 @@ exports.authenticateToken = (req, res, next) => {
       return res.sendStatus(401); // Unauthorized
    }
 
-   jwt.verify(token, config.tokenSecret, (err, user) => {
+   jwt.verify(token, config.jwtSecret, (err, user) => {
       if (err) {
          return res.sendStatus(403); // Forbidden
       }

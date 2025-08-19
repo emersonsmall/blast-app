@@ -26,7 +26,7 @@ exports.login = (req, res) => {
   const payload = { id: user.id, username: username, admin: user.admin };
 
   console.log(`User ${username} logged in successfully.`);
-  const token = jwt.sign(payload, config.tokenSecret, { expiresIn: "1h" });
+  const token = jwt.sign(payload, config.jwtSecret, { expiresIn: "1h" });
 
   res.json({ authToken: token });
 };
