@@ -90,7 +90,7 @@ Additional criteria
 
 ### External API(s)
 
-- **One line description:** Not attempted
+- **One line description:** GenBank API to retrieve accession ID and genome files given the common name of a species.
 - **Video timestamp:**
 - **Relevant files:**
     - 
@@ -104,7 +104,7 @@ Additional criteria
 
 ### Custom processing
 
-- **One line description:** Not attempted
+- **One line description:** Piped together GenBank API -> gffread -> blast using a custom Python script
 - **Video timestamp:**
 - **Relevant files:**
     - 
