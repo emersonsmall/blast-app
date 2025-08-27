@@ -7,7 +7,6 @@ import textwrap
 import gffutils
 import pyfaidx
 from Bio.Blast import NCBIXML
-from Bio.Seq import Seq
 from Bio import SeqIO
 
 # TODO: don't delete extracted CDS sequences after BLAST. relocate to data/accession ID directory or database. 

@@ -12,8 +12,9 @@ const dataDir = path.join(process.cwd(), "data");
 // TODO: create jobs DB?
 // TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
 // TODO: add results to jobs database, or resuls table with job ID?
-// TODO: use S3 for storing gff/fasta/fai/cds files
+// TODO: use S3 for storing gff/fasta files
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
+// TODO: could build database of taxon -> accession IDs to speed up lookup/avoid multiple API calls
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = (queryTaxon, targetTaxon, userId) => {
