@@ -9,8 +9,8 @@ const jobs = [];
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
 
-// TODO FIRST: add bioinformatics processing of FASTA files
 // TODO: create jobs DB?
+// TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
 // TODO: add results to jobs database, or resuls table with job ID?
 // TODO: use S3 for storing gff/fasta/fai/cds files
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
@@ -50,6 +50,7 @@ async function processComparativeJob(job) {
 
         job.results = blastResult;
         job.status = "completed";
+        console.log(`Job ${job.id}: ${JSON.stringify(job.results)}`);
         console.log(`Job ${job.id}: Completed successfully`);
 
     } catch (err) {
@@ -118,10 +119,10 @@ function runBlast(queryGenome, targetGenome, jobId) {
             queryGenome.gffPath,
             targetGenome.fastaPath,
             targetGenome.gffPath,
-            jobId
+            jobId.toString()
         ];
 
-        const pythonProcess = spawn("python3", args);
+        const pythonProcess = spawn("python", args);
 
         let result = '';
         let error = '';
@@ -148,7 +149,7 @@ function runBlast(queryGenome, targetGenome, jobId) {
 }
 
 
-// --- HELPER FUNCTIONS ---
+// --- HELPERS ---
 
 function findFileByExt(dir, ext) {
     const files = fs.readdirSync(dir);
