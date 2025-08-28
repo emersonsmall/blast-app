@@ -1,5 +1,7 @@
 const db = require("./db");
 
+// TODO: insert users in initDatabase
+
 const createTableQueries = [
     `CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -38,8 +40,6 @@ const createTableQueries = [
         FOREIGN KEY (target_accession_id) REFERENCES genomes(accession_id),
         FOREIGN KEY (result_id) REFERENCES job_results(id)
     )`
-
-
 ];
 
 const initDatabase = async () => {

@@ -15,8 +15,8 @@ from Bio import SeqIO
 # TODO: add useful files/output to db/s3 and use for subsequent jobs if possible
 
 # Pipeline:
-# 1. Extract nucleotide CDS sequences from query and target
-# 2. Translate target to protein (blastx does this internally for query)
+# 1. Extract nucleotide CDS sequences from query and target genomes
+# 2. Translate target CDS to proteins (blastx does this internally for query)
 # 3. Run blastx to search query against target
 # 4. Parse results and return top hit
 

@@ -1,17 +1,18 @@
 const db = require("../config/db");
 
+// TODO: 
+
 /**
  * CREATE: Inserts a new job into the jobs table.
  * @param {object} jobData - Contains userId, queryTaxon, and targetTaxon.
  * @returns {object} The newly created job record.
  */
 exports.create = async (jobData) => {
-    const { userId, queryTaxon, targetTaxon } = jobData;
     let conn;
     try {
         conn = await db.getConnection();
         const query = "INSERT INTO jobs (user_id, query_taxon, target_taxon) VALUES (?, ?, ?)";
-        const result = await conn.query(query, [userId, queryTaxon, targetTaxon]);
+        const result = await conn.query(query, Object.values(jobData));
 
         const [job] = await conn.query("SELECT * FROM jobs WHERE id = ?", [result.insertId]);
         return job;

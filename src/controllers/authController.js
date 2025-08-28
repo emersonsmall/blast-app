@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 
-// Hard-coded username and password
+// TODO: replace with user DB
 const users = {
    user1: {
       id: 1,
@@ -17,7 +17,7 @@ const users = {
 
 exports.login = (req, res) => {
   const { username, password } = req.body;
-  const user = users[username];
+  const user = users[username]; // Replace with DB lookup
 
   if (!user || user.password !== password) {
     return res.status(401).json({ message: "Invalid credentials" });
