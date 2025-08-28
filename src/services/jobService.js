@@ -5,63 +5,59 @@ const path = require("path");
 const unzipper = require("unzipper");
 const { spawn } = require("child_process");
 
-const jobs = [];
+const jobModel = require("../models/jobModel");
+const resultModel = require("../models/resultModel");
+
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
 
-// TODO: create jobs DB?
 // TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
-// TODO: add results to jobs database, or resuls table with job ID?
 // TODO: use S3 for storing gff/fasta files
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
 // TODO: could build database of taxon -> accession IDs to speed up lookup/avoid multiple API calls
 
 // Synchronous to allow controller to respond immediately
-exports.createJob = (queryTaxon, targetTaxon, userId) => {
-    const newJob = {
-        id: jobs.length + 1,
-        userId,
-        taxons: { query: queryTaxon, target: targetTaxon },
-        status: "pending",
-        createdAt: new Date(),
-        results: null,
-    };
-    jobs.push(newJob);
-
-    processComparativeJob(newJob); // long-running task
+exports.createJob = async (queryTaxon, targetTaxon, userId) => {
+    const newJob = await jobModel.create({ userId, queryTaxon, targetTaxon });
+    console.log(JSON.stringify(newJob));
+    processBlastJob(newJob); // do not await, run asynchronously
 
     return newJob;
 };
 
 
-async function processComparativeJob(job) {
+async function processBlastJob(job) {
     try {
-        job.status = "preparing_genomes";
-        console.log(`Job ${job.id}: Preparing genome data`);
-        const queryGenome = await prepareGenome(job.taxons.query, job.id);
-        const targetGenome = await prepareGenome(job.taxons.target, job.id);
+        console.log(`Job ${job.id}: Getting genome data`);
+        jobModel.updateById(job.id, { status: "getting_genomes" });
+        const queryGenome = await getGenome(job.query_taxon, job.id);
+        const targetGenome = await getGenome(job.target_taxon, job.id);
 
-        job.status = "running_blast";
         console.log(`Job ${job.id}: Running BLAST`);
+        jobModel.updateById(job.id, { 
+            status: "running_blast",
+            query_accession_id: queryGenome.accessionId, 
+            target_accession_id: targetGenome.accessionId 
+        });
         const blastResult = await runBlast(queryGenome, targetGenome, job.id);
 
         if (blastResult.error) {
             throw new Error(blastResult.error);
         }
 
-        job.results = blastResult;
-        job.status = "completed";
-        console.log(`Job ${job.id}: ${JSON.stringify(job.results)}`);
+        newResult = await resultModel.create(blastResult.top_hit);
+        console.log(JSON.stringify(newResult));
+
+        await jobModel.updateById(job.id, { status: "completed", result_id: newResult.id });
         console.log(`Job ${job.id}: Completed successfully`);
 
     } catch (err) {
         console.error(`Job ${job.id} failed: ${err.stack}`);
-        job.status = "failed";
-        job.error = err.message;
+        await jobModel.updateById(job.id, { status: "failed" });
     }
 }
 
-async function prepareGenome(taxon, jobId) {
+async function getGenome(taxon, jobId) {
     console.log(`Job ${jobId}: Preparing genome for ${taxon}`);
     // get accession ID from GenBank
     const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(taxon)}/dataset_report?filters.reference_only=true`;
@@ -107,7 +103,7 @@ async function prepareGenome(taxon, jobId) {
         throw new Error(`Failed to find GFF or FASTA files for accession ID ${accessionId}`);
     }
 
-    return { fastaPath, gffPath };
+    return { fastaPath, gffPath, accessionId };
 }
 
 

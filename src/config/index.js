@@ -6,5 +6,13 @@ if (!process.env.JWT_SECRET) {
 
 module.exports = {
   port: process.env.PORT || 3000,
+
+  db: {
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "password",
+    database: process.env.DB_NAME || "blast_app"
+  },
+
   jwtSecret: process.env.JWT_SECRET
 }

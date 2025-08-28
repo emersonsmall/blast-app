@@ -115,6 +115,7 @@ def run_blastx(query_nt_path, target_prot_path, job_id, db_name, blast_results_x
     lowest_e_value = float('inf')
     with open(blast_results_xml) as results_fh:
         for blast_record in NCBIXML.parse(results_fh):
+            print(lowest_e_value, file=sys.stderr)
             if len(blast_record.alignments) > 0:
                 curr_top_alignment = blast_record.alignments[0]
                 curr_top_hsp = curr_top_alignment.hsps[0]

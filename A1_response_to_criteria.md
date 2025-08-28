@@ -6,8 +6,11 @@ Overview
 
 - **Name:** Emerson Small
 - **Student number:** n10763139
-- **Application name:** 
-- **Two line description:** 
+- **Application name:** Blast App
+- **Two line description:** Takes the names of two species/organisms, retrieves
+the relevant fasta (sequence content) and gff (genome annotation) files using the
+GenBank API, and runs an all-vs-all BLAST search to find the most similar gene
+of the two species.
 
 
 Core criteria
