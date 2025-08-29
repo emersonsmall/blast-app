@@ -11,6 +11,8 @@ exports.createJob = async (req, res) => {
   // No await, just create job and respond immediately
   const newJob = jobService.createJob(queryTaxon, targetTaxon, userId);
 
+  console.log(JSON.stringify(newJob));
+
   res.status(202).json({
     id: newJob.id,
     status: newJob.status,

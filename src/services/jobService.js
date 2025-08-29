@@ -12,14 +12,12 @@ const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
 
 // TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
-// TODO: use S3 for storing gff/fasta files
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
 // TODO: could build database of taxon -> accession IDs to speed up lookup/avoid multiple API calls
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = async (queryTaxon, targetTaxon, userId) => {
     const newJob = await jobModel.create({ userId, queryTaxon, targetTaxon });
-    console.log(JSON.stringify(newJob));
     processBlastJob(newJob); // do not await, run asynchronously
 
     return newJob;
