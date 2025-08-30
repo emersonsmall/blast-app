@@ -12,16 +12,14 @@ const genomeModel = require("../models/genomeModel");
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
 
-// TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
+// TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
-// TODO: could build database of taxon -> accession IDs to speed up lookup/avoid multiple API calls
-// TODO delete temp directory if empty
+// TODO: database of taxon -> accession IDs exists in jobs table. could use to avoid multiple API calls
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = async (queryTaxon, targetTaxon, userId) => {
     const newJob = await jobModel.create({ userId, queryTaxon, targetTaxon });
-    processBlastJob(newJob); // do not await, run asynchronously
-
+    processBlastJob(newJob); // run asynchronously
     return newJob;
 };
 
@@ -36,8 +34,8 @@ async function processBlastJob(job) {
         console.log(`Job ${job.id}: Running BLAST`);
         jobModel.updateById(job.id, { 
             status: "running_blast",
-            query_accession_id: queryGenome.accessionId, 
-            target_accession_id: targetGenome.accessionId 
+            query_accession: queryGenome.id, 
+            target_accession: targetGenome.id 
         });
         const blastResult = await runBlast(queryGenome, targetGenome, job.id);
 
@@ -59,7 +57,8 @@ async function processBlastJob(job) {
 
 async function getGenome(taxon, jobId) {
     console.log(`Job ${jobId}: Preparing genome for ${taxon}`);
-    // get accession ID from GenBank
+
+    // Get accession ID for the given taxon from GenBank API
     const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(taxon)}/dataset_report?filters.reference_only=true`;
     const reportRes = await apiRequest(reportUrl);
     
@@ -67,45 +66,55 @@ async function getGenome(taxon, jobId) {
         throw new Error(`No reference genome/s found for taxon/s ${taxon}.`);
     }
 
-    const accessionId = reportRes.reports[0].accession;
-    console.log(`Job ${jobId} found accession ID: ${accessionId}`);
+    const report = reportRes.reports[0]; // always take first result
+    const id = report.accession;
+
+    const genomeData = {
+        id: id,
+        organismName: report.organism.organism_name,
+        commonName: report.organism.common_name, // not always provided
+        totalSequenceLength: report.assembly_stats.total_sequence_length,
+        totalGeneCount: report.annotation_info.stats.gene_counts.total
+    };
+    console.log(`Job ${jobId}: Genome data: ${JSON.stringify(genomeData)}`);
+
+    // Add genome to database
+    await genomeModel.create(genomeData).catch(err => {
+        if (err.code !== 'ER_DUP_ENTRY') throw err;
+    });
+
+    // Download FASTA and GFF files if they don't already exist
+    const extractionDir = path.join(dataDir, id);
+    const tempDir = path.join(dataDir, "temp");
+
+    if (!await pathExists(extractionDir)) {
+        console.log(`Job ${jobId}: Downloading files for ${id}`);
+        const downloadUrl = `${genbankApiBaseUrl}/genome/accession/${id}/download?include_annotation_type=GENOME_FASTA&include_annotation_type=GENOME_GFF`;
+        await fsp.mkdir(tempDir, { recursive: true });
+        const zipFilePath = path.join(tempDir, `${id}.zip`);
     
-    // Add genome to database if not already present
-
-
-    extractionDir = path.join(dataDir, accessionId);
-
-    if (fs.existsSync(extractionDir)) {
-        const gffFile = findFileByExt(extractionDir, ".gff");
-        const fastaFile = findFileByExt(extractionDir, ".fna");
-        if (gffFile && fastaFile) {
-            console.log(`Job ${jobId}: FASTA and GFF files already downloaded and extracted.`);
-            return { fastaPath: fastaFile, gffPath: gffFile };
-        }
+        await downloadFile(downloadUrl, zipFilePath);
+    
+        // Extract relevant files from ZIP archive
+        console.log(`Job ${jobId}: Unzipping files to ${extractionDir}`);
+        await fsp.mkdir(extractionDir);
+        await extractFiles(zipFilePath, extractionDir);
+    
+        await fsp.unlink(zipFilePath); // delete ZIP file after extraction
+    } else {
+        console.log(`Job ${jobId}: FASTA and GFF files already downloaded and extracted.`);
     }
 
-    console.log(`Job ${jobId}: Downloading files for ${accessionId}`);
-    const downloadUrl = `${genbankApiBaseUrl}/genome/accession/${accessionId}/download?include_annotation_type=GENOME_FASTA&include_annotation_type=GENOME_GFF`;
-    const tempDir = path.join(dataDir, "temp");
-    await fsp.mkdir(tempDir, { recursive: true });
-    const zipFilePath = path.join(tempDir, `${accessionId}.zip`);
+    await fsp.rmdir(tempDir).catch(() => {}); // delete temp dir if empty
 
-    await downloadFile(downloadUrl, zipFilePath);
-
-    console.log(`Job ${jobId}: Unzipping files to ${extractionDir}`);
-    await fsp.mkdir(extractionDir, { recursive: true });
-    await extractFiles(zipFilePath, extractionDir);
-
-    await fsp.unlink(zipFilePath); // delete ZIP file after extraction
-
-    const fastaPath = findFileByExt(extractionDir, ".fna");
-    const gffPath = findFileByExt(extractionDir, ".gff");
+    const fastaPath = await findFileByExt(extractionDir, ".fna");
+    const gffPath = await findFileByExt(extractionDir, ".gff");
 
     if (!fastaPath || !gffPath) {
-        throw new Error(`Failed to find GFF or FASTA files for accession ID ${accessionId}`);
+        throw new Error(`Failed to find GFF or FASTA file for accession ID ${id}`);
     }
 
-    return { fastaPath, gffPath, accessionId };
+    return { fastaPath, gffPath, id };
 }
 
 
@@ -148,12 +157,25 @@ function runBlast(queryGenome, targetGenome, jobId) {
 }
 
 
-// --- HELPERS ---
+// --- HELPER FUNCTIONS ---
+async function findFileByExt(dir, ext) {
+    try {
+        const files = await fsp.readdir(dir);
+        const foundFile = files.find(file => file.endsWith(ext));
+        return foundFile ? path.join(dir, foundFile) : null;
+    } catch (err) {
+        console.error(`Error reading directory ${dir}: ${err.message}`);
+        return null;
+    }
+}
 
-function findFileByExt(dir, ext) {
-    const files = fs.readdirSync(dir);
-    const foundFile = files.find(file => file.endsWith(ext));
-    return foundFile ? path.join(dir, foundFile) : null;
+async function pathExists(path) {
+    try {
+        await fsp.access(path);
+        return true;
+    } catch (err) {
+        return false;
+    }
 }
 
 async function extractFiles(zipFilePath, destDir) {
