@@ -1,7 +1,10 @@
 const baseModel = require("./baseModel");
 const db = require("../config/db");
 
-const genomeModel = baseModel.createBaseModel("genomes");
+const genomeModel = baseModel.createBaseModel("genomes", {
+    allowedSortBy: ["id", "common_name", "organism_name", "total_sequence_length", "total_gene_count"],
+    defaultSortBy: "id"
+});
 
 /**
  * Finds all unique genomes that a specific user has run jobs with.

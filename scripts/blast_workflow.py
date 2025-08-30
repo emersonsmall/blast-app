@@ -64,7 +64,7 @@ def extract_cds(fasta_path, gff_path, out_path, job_id):
         raise RuntimeError(f"Failed to extract CDS: {e}")
 
 
-def translate_cds_to_prot(nt_fasta_path, out_fpath, job_id):
+def translate_cds_to_prot(nt_fasta_path, out_fpath):
     """Translates a nucleotide FASTA file to a protein FASTA file."""
     try:
         protein_entries = []
@@ -149,7 +149,8 @@ if __name__ == "__main__":
         extract_cds(target_fasta, target_gff, target_nt_out, job_id)
 
         print(f"Job {job_id}: Translating nucleotide FASTA to protein FASTA", file=sys.stderr)
-        translate_cds_to_prot(target_nt_out, target_prot_out, job_id)
+        translate_cds_to_prot(target_nt_out, target_prot_out)
+        # FAILS HERE
 
         results = run_blastx(query_nt_out, target_prot_out, job_id, db_name, blast_results_xml)
 

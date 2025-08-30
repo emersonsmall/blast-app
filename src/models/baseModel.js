@@ -25,7 +25,7 @@ const mapKeysToCamelCase = (obj) => {
  * @returns {object}            An object containing basic CRUD and search methods.
  */
 const createBaseModel = (tableName, options = {}) => {
-    const { allowedSortBy = ["created_at"] } = options;
+    const { allowedSortBy = ["id"], defaultSortBy = allowedSortBy[0] } = options;
 
     return {
         /**
@@ -132,11 +132,12 @@ const createBaseModel = (tableName, options = {}) => {
                         return `${camelToSnakeCase(key)} = ?`;
                     });
                     const whereString = ` WHERE ${whereClauses.join(" AND ")}`;
+                    query += whereString;
                     countQuery += whereString;
                 }
 
                 // Sorting
-                const sortBy = sorting.sortBy || "created_at";
+                const sortBy = sorting.sortBy || defaultSortBy;
                 const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
                 if (allowedSortBy.includes(sortBy)) {
                     query += ` ORDER BY ${sortBy} ${sortOrder}`;
@@ -148,11 +149,12 @@ const createBaseModel = (tableName, options = {}) => {
                 const offset = (page - 1) * limit;
                 query += ` LIMIT ? OFFSET ?`;
 
-                const [records] = await conn.query(query, [...params, limit, offset]);
-                const [[{ total }]] = await conn.query(countQuery, params);
+                const records = await conn.query(query, [...params, limit, offset]);
+                const [countRows] = await conn.query(countQuery, params);
+                const total = Number(countRows.total);
 
                 return {
-                    records: records.map(mapKeysToCamelCase),
+                    records: records,
                     totalItems: total,
                     totalPages: Math.ceil(total / limit),
                     currentPage: page,
