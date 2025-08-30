@@ -1,4 +1,4 @@
-CONDA
+PYTHON
 biopython
 pyfaidx
 gffutils
@@ -7,3 +7,4 @@ SYSTEM:
 NCBI blast
 node
 docker
+conda (if not available with pip)
