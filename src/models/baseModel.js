@@ -146,4 +146,4 @@ const createBaseModel = (tableName) => {
     };
 };
 
-module.exports = createBaseModel;
+module.exports = {createBaseModel, mapKeysToCamelCase};

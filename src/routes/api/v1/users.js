@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../../../controllers/userController");
+const genomeController = require("../../../controllers/genomeController");
 const { authenticateToken, authoriseAdmin } = require("../../../middleware/authMiddleware");
 
 /**
@@ -37,5 +38,12 @@ router.put("/:id", authenticateToken, userController.updateUserById);
  * @access Private (admin only)
  */
 router.delete("/:id", authenticateToken, authoriseAdmin, userController.deleteUserById);
+
+/**
+ * @route GET /api/v1/users/:id/genomes
+ * @desc Get all unique genomes associated with a user
+ * @access Private
+ */
+router.get("/:id/genomes", authenticateToken, genomeController.getAllGenomesForUser);
 
 module.exports = router;

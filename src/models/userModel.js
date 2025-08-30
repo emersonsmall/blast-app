@@ -1,6 +1,5 @@
-const createBaseModel = require("./baseModel");
-const db = require("../config/db");
+const baseModel = require("./baseModel");
 
-const userModel = createBaseModel("users");
+const userModel = baseModel.createBaseModel("users");
 
 module.exports = userModel;

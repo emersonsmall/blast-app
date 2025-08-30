@@ -1,5 +1,5 @@
-const createBaseModel = require("./baseModel");
+const baseModel = require("./baseModel");
 
-const jobModel = createBaseModel("jobs");
+const jobModel = baseModel.createBaseModel("jobs");
 
 module.exports = jobModel;

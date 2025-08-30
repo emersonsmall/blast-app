@@ -56,6 +56,11 @@ exports.getJobById = async (req, res) => {
  */
 exports.getAllJobsForUser = async (req, res) => {
   try {
+    if (req.user.is_admin) {
+      // Admins can see all jobs
+      const jobs = await jobModel.getAll();
+      return res.status(200).json(jobs);
+    }
     const jobs = await jobModel.searchByField("user_id", req.user.id);
     res.status(200).json(jobs);
   } catch (err) {
