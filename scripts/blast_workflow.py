@@ -115,7 +115,6 @@ def run_blastx(query_nt_path, target_prot_path, job_id, db_name, blast_results_x
     lowest_e_value = float('inf')
     with open(blast_results_xml) as results_fh:
         for blast_record in NCBIXML.parse(results_fh):
-            print(lowest_e_value, file=sys.stderr)
             if len(blast_record.alignments) > 0:
                 curr_top_alignment = blast_record.alignments[0]
                 curr_top_hsp = curr_top_alignment.hsps[0]
@@ -143,12 +142,11 @@ if __name__ == "__main__":
     blast_results_xml = f"{job_id}_blast_results.xml"
 
     try:
-        print(f"Job {job_id}: Extracting CDS for {os.path.basename(query_fasta)}", file=sys.stderr)
+        print(f"Job {job_id}: Extracting CDS", file=sys.stderr)
         extract_cds(query_fasta, query_gff, query_nt_out, job_id)
-        print(f"Job {job_id}: Extracting CDS for {os.path.basename(target_fasta)}", file=sys.stderr)
         extract_cds(target_fasta, target_gff, target_nt_out, job_id)
 
-        print(f"Job {job_id}: Translating nucleotide FASTA to protein FASTA", file=sys.stderr)
+        print(f"Job {job_id}: Translating nucleotides to proteins", file=sys.stderr)
         translate_cds_to_prot(target_nt_out, target_prot_out)
         # FAILS HERE
 
