@@ -1,31 +1,18 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const userModel = require("../models/userModel");
 
-// TODO: replace with user DB
-const users = {
-   user1: {
-      id: 1,
-      password: "user1",
-      admin: false,
-   },
-   admin: {
-      id: 2,
-      password: "admin",
-      admin: true,
-   },
-};
-
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
   const { username, password } = req.body;
-  const user = users[username]; // Replace with DB lookup
+  const user = await userModel.getByUsername(username);
 
   if (!user || user.password !== password) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const payload = { id: user.id, username: username, admin: user.admin };
+  const payload = { id: user.id, username: username, is_admin: user.is_admin };
 
-  console.log(`User ${username} logged in successfully.`);
+  console.log(`User '${username}' logged in successfully.`);
   const token = jwt.sign(payload, config.jwtSecret, { expiresIn: "1h" });
 
   res.json({ authToken: token });

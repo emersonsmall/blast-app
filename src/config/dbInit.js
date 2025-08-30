@@ -42,6 +42,11 @@ const createTableQueries = [
     )`
 ];
 
+const seedUserQueries = [
+    `INSERT IGNORE INTO users (username, password, is_admin) VALUES ("admin", "admin", TRUE)`,
+    `INSERT IGNORE INTO users (username, password, is_admin) VALUES ("user", "user", FALSE)`
+];
+
 const initDatabase = async () => {
     let conn;
     try {
@@ -49,6 +54,11 @@ const initDatabase = async () => {
         for (const query of createTableQueries) {
             await conn.query(query);
         }
+
+        for (const query of seedUserQueries) {
+            await conn.query(query);
+        }
+
         console.log("Database init completed.");
     } catch (err) {
         console.error("Error setting up database:", err);
