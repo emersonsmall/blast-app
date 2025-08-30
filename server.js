@@ -5,6 +5,7 @@ const dbInit = require("./src/config/dbInit");
 
 const authRoutes = require("./src/routes/api/v1/auth");
 const jobRoutes = require("./src/routes/api/v1/jobs");
+const userRoutes = require("./src/routes/api/v1/users");
 const pageRoutes = require("./src/routes/pages");
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 // API routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/jobs", jobRoutes);
+app.use("/api/v1/users", userRoutes);
 
 // Web page routes
 app.use("/", pageRoutes);

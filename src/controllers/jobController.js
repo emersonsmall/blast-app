@@ -17,19 +17,15 @@ exports.createJob = async (req, res) => {
 
   try {
     // No await, just create job and respond immediately
-    const newJob = jobService.createJob(queryTaxon, targetTaxon, userId);
+    jobService.createJob(queryTaxon, targetTaxon, userId);
 
     res.status(202).json({
-      id: newJob.id,
-      status: newJob.status,
       message: "Job accepted and is now pending.",
     });
   } catch (err) {
     console.error("Error creating job:", err);
     res.status(500).json({ error: "Failed to create job." });
   }
-
-  console.log(JSON.stringify(newJob));
 };
 
 /**
@@ -60,7 +56,7 @@ exports.getJobById = async (req, res) => {
  */
 exports.getAllJobsForUser = async (req, res) => {
   try {
-    const jobs = await jobModel.getAllByUserId(req.user.id);
+    const jobs = await jobModel.searchByField("user_id", req.user.id);
     res.status(200).json(jobs);
   } catch (err) {
     console.error("Error fetching jobs:", err);
@@ -84,7 +80,7 @@ exports.deleteJobById = async (req, res) => {
     }
 
     await jobModel.delete(id);
-    //await resultModel.deleteByJobId(id); // Also delete associated results
+    //TODO await resultModel.deleteByJobId(id); // Also delete associated results
     res.status(204).send();
   } catch (err) {
     console.error("Error deleting job:", err);

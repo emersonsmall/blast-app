@@ -4,7 +4,7 @@ const userModel = require("../models/userModel");
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
-  const user = await userModel.getByUsername(username);
+  const user = (await userModel.searchByField("username", username))[0];
 
   if (!user || user.password !== password) {
     return res.status(401).json({ message: "Invalid credentials" });

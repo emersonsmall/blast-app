@@ -1,0 +1,9 @@
+CONDA
+biopython
+pyfaidx
+gffutils
+
+SYSTEM:
+NCBI blast
+node
+docker

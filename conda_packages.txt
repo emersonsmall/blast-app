@@ -1,4 +1,0 @@
-blast
-biopython
-pyfaidx
-gffutils

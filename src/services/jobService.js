@@ -7,6 +7,7 @@ const { spawn } = require("child_process");
 
 const jobModel = require("../models/jobModel");
 const resultModel = require("../models/resultModel");
+const genomeModel = require("../models/genomeModel");
 
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
@@ -14,6 +15,7 @@ const dataDir = path.join(process.cwd(), "data");
 // TODO: handle case where taxon returns multiple genomes (e.g. E. coli)
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
 // TODO: could build database of taxon -> accession IDs to speed up lookup/avoid multiple API calls
+// TODO delete temp directory if empty
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = async (queryTaxon, targetTaxon, userId) => {
@@ -28,8 +30,8 @@ async function processBlastJob(job) {
     try {
         console.log(`Job ${job.id}: Getting genome data`);
         jobModel.updateById(job.id, { status: "getting_genomes" });
-        const queryGenome = await getGenome(job.query_taxon, job.id);
-        const targetGenome = await getGenome(job.target_taxon, job.id);
+        const queryGenome = await getGenome(job.queryTaxon, job.id);
+        const targetGenome = await getGenome(job.targetTaxon, job.id);
 
         console.log(`Job ${job.id}: Running BLAST`);
         jobModel.updateById(job.id, { 
@@ -68,6 +70,9 @@ async function getGenome(taxon, jobId) {
     const accessionId = reportRes.reports[0].accession;
     console.log(`Job ${jobId} found accession ID: ${accessionId}`);
     
+    // Add genome to database if not already present
+
+
     extractionDir = path.join(dataDir, accessionId);
 
     if (fs.existsSync(extractionDir)) {
@@ -92,7 +97,6 @@ async function getGenome(taxon, jobId) {
     await extractFiles(zipFilePath, extractionDir);
 
     await fsp.unlink(zipFilePath); // delete ZIP file after extraction
-    // delete temp directory if empty
 
     const fastaPath = findFileByExt(extractionDir, ".fna");
     const gffPath = findFileByExt(extractionDir, ".gff");
