@@ -5,8 +5,8 @@ const genomeModel = baseModel.createBaseModel("genomes");
 
 /**
  * Finds all unique genomes that a specific user has run jobs with.
- * @param {number} userId - The ID of the user.
- * @returns {Promise<Array>} - A promise that resolves to an array of unique genome metadata objects.
+ * @param {number} userId   The ID of the user.
+ * @returns {Array}         An array of genome metadata objects.
  */
 genomeModel.getUniqueGenomesByUserId = async (userId) => {
     let conn;

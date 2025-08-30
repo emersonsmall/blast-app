@@ -5,8 +5,8 @@ const snakeToCamelCase = (str) => str.replace(/([-_][a-z])/g, group => group.toU
 
 /**
  * Converts object keys from snake_case to camelCase.
- * @param {object} obj - The object to convert.
- * @returns {object} - The converted object.
+ * @param {object} obj  The object to convert.
+ * @returns {object}    The converted object.
  */
 const mapKeysToCamelCase = (obj) => {
     if (obj === null || typeof obj !== 'object') return obj;
@@ -19,13 +19,14 @@ const mapKeysToCamelCase = (obj) => {
     return newObj;
 };
 
-
 /**
  * Creates a generic model with basic CRUD and search operations for a specified table.
- * @param {string} tableName - The name of the database table.
- * @returns {object} An object containing basic CRUD and search methods.
+ * @param {string} tableName    The name of the database table.
+ * @returns {object}            An object containing basic CRUD and search methods.
  */
-const createBaseModel = (tableName) => {
+const createBaseModel = (tableName, options = {}) => {
+    const { allowedSortBy = ["created_at"] } = options;
+
     return {
         /**
          * CREATE: Inserts a new record.
@@ -68,20 +69,109 @@ const createBaseModel = (tableName) => {
         },
 
         /**
-         * READ ALL: Retrieves all records from the table.
-         * @returns {array} An array of all records.
-         */
-        async getAll() {
-            let conn;
-            try {
-                conn = await db.getConnection();
-                const records = await conn.query(`SELECT * FROM ${tableName}`);
-                return records;
+         * UPDATE: Updates a record by its ID.
+         * @param {number} id       The ID of the record to update.
+         * @param {object} updates  An object containing the fields to update.
+         * @returns {object|null}   The updated record or null if not found.
+        */
+       async updateById(id, updates) {
+           let conn;
+           try {
+               conn = await db.getConnection();
+               
+               const setClause = Object.keys(updates)
+               .map(key => `${camelToSnakeCase(key)} = ?`)
+               .join(", ");
+               
+               if (!setClause) return await this.getById(id); // No updates
+               
+               const query = `UPDATE ${tableName} SET ${setClause} WHERE id = ?`;
+               await conn.query(query, [...Object.values(updates), id]);
+               return this.getById(id);
+            } finally {
+                if (conn) conn.release();
+            }
+        },
+        
+        /**
+         * DELETE: Deletes a record by its ID.
+         * @param {number} id   The ID of the record to delete.
+         * @return {boolean}    True if deleted, false otherwise.
+        */
+       async deleteById(id) {
+           let conn;
+           try {
+               conn = await db.getConnection();
+               const result = await conn.query(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
+               return result.affectedRows > 0;
             } finally {
                 if (conn) conn.release();
             }
         },
 
+        /**
+         * FIND method with filtering, sorting, and pagination.
+         * @param {object} queryOptions     Contains filters, pagination, and sorting
+         * @returns {object}                { records, totalItems, totalPages, currentPage }
+         */
+        async find(queryOptions = {}) {
+            let conn;
+            try {
+                conn = await db.getConnection();
+                const { filters = {}, pagination = {}, sorting = {} } = queryOptions;
+
+                let query = `SELECT * FROM ${tableName}`;
+                let countQuery = `SELECT COUNT(*) as total FROM ${tableName}`;
+                const params = [];
+
+                // Filtering
+                const filterKeys = Object.keys(filters);
+                if (filterKeys.length > 0) {
+                    const whereClauses = filterKeys.map(key => {
+                        params.push(filters[key]);
+                        return `${camelToSnakeCase(key)} = ?`;
+                    });
+                    const whereString = ` WHERE ${whereClauses.join(" AND ")}`;
+                    countQuery += whereString;
+                }
+
+                // Sorting
+                const sortBy = sorting.sortBy || "created_at";
+                const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
+                if (allowedSortBy.includes(sortBy)) {
+                    query += ` ORDER BY ${sortBy} ${sortOrder}`;
+                }
+
+                // Pagination
+                const limit = parseInt(pagination.limit, 10) || 10;
+                const page = parseInt(pagination.page, 10) || 1;
+                const offset = (page - 1) * limit;
+                query += ` LIMIT ? OFFSET ?`;
+
+                const [records] = await conn.query(query, [...params, limit, offset]);
+                const [[{ total }]] = await conn.query(countQuery, params);
+
+                return {
+                    records: records.map(mapKeysToCamelCase),
+                    totalItems: total,
+                    totalPages: Math.ceil(total / limit),
+                    currentPage: page,
+                };
+
+            } finally {
+                if (conn) conn.release();
+            }
+        },
+
+        /**
+         * READ ALL: Retrieves all records from the table.
+         * @returns {array} An array of all records.
+         */
+        async getAll() {
+            const { records } = await this.find({ pagination: { limit: 1000 } });
+            return records;
+        },
+        
         /**
          * SEARCH: Searches records by a specified field and value.
          * @param {string} field    The field to search by.
@@ -89,59 +179,8 @@ const createBaseModel = (tableName) => {
          * @return {array}          An array of matching records.
          */
         async searchByField(field, value) {
-            let conn;
-            try {
-                conn = await db.getConnection();
-
-                field = camelToSnakeCase(field);
-
-                const records = await conn.query(`SELECT * FROM ${tableName} WHERE ${field} = ?`, [value]);
-                if (records) records.map(mapKeysToCamelCase);
-                return records;
-            } finally {
-                if (conn) conn.release();
-            }
-        },
-
-        /**
-         * UPDATE: Updates a record by its ID.
-         * @param {number} id       The ID of the record to update.
-         * @param {object} updates  An object containing the fields to update.
-         * @returns {object|null}   The updated record or null if not found.
-         */
-        async updateById(id, updates) {
-            let conn;
-            try {
-                conn = await db.getConnection();
-
-                const setClause = Object.keys(updates)
-                    .map(key => `${camelToSnakeCase(key)} = ?`)
-                    .join(", ");
-
-                if (!setClause) return await this.getById(id); // No updates
-
-                const query = `UPDATE ${tableName} SET ${setClause} WHERE id = ?`;
-                await conn.query(query, [...Object.values(updates), id]);
-                return this.getById(id);
-            } finally {
-                if (conn) conn.release();
-            }
-        },
-
-        /**
-         * DELETE: Deletes a record by its ID.
-         * @param {number} id   The ID of the record to delete.
-         * @return {boolean}    True if deleted, false otherwise.
-         */
-        async deleteById(id) {
-            let conn;
-            try {
-                conn = await db.getConnection();
-                const result = await conn.query(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
-                return result.affectedRows > 0;
-            } finally {
-                if (conn) conn.release();
-            }
+            const { records } = await this.find({ filters: { [field]: value } });
+            return records;
         },
     };
 };

@@ -85,7 +85,7 @@ exports.deleteJobById = async (req, res) => {
     }
 
     await jobModel.delete(id);
-    //TODO await resultModel.deleteByJobId(id); // Also delete associated results
+    await resultModel.deleteByJobId(id); // delete associated results
     res.status(204).send();
   } catch (err) {
     console.error("Error deleting job:", err);
