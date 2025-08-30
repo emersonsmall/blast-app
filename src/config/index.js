@@ -14,5 +14,7 @@ module.exports = {
     database: process.env.DB_NAME || "blast_app_db"
   },
 
-  jwtSecret: process.env.JWT_SECRET
+  jwtSecret: process.env.JWT_SECRET,
+
+  genbankApiKey: process.env.GENBANK_API_KEY
 }

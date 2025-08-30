@@ -8,13 +8,14 @@ const { spawn } = require("child_process");
 const jobModel = require("../models/jobModel");
 const resultModel = require("../models/resultModel");
 const genomeModel = require("../models/genomeModel");
+const config = require("../config");
 
 const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const dataDir = path.join(process.cwd(), "data");
 
 // TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
-// TODO: database of taxon -> accession IDs exists in jobs table. could use to avoid multiple API calls
+// TODO: taxon -> accession ID relationship exists in jobs table. could use to avoid multiple API calls
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = async (queryTaxon, targetTaxon, userId) => {
@@ -60,7 +61,7 @@ async function getGenome(taxon, jobId) {
 
     // Get accession ID for the given taxon from GenBank API
     const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(taxon)}/dataset_report?filters.reference_only=true`;
-    const reportRes = await apiRequest(reportUrl);
+    const reportRes = await apiRequest(reportUrl, config.genbankApiKey);
     
     if (!reportRes.reports || reportRes.reports.length === 0) {
         throw new Error(`No reference genome/s found for taxon/s ${taxon}.`);
@@ -93,7 +94,7 @@ async function getGenome(taxon, jobId) {
         await fsp.mkdir(tempDir, { recursive: true });
         const zipFilePath = path.join(tempDir, `${id}.zip`);
     
-        await downloadFile(downloadUrl, zipFilePath);
+        await downloadFile(downloadUrl, zipFilePath, config.genbankApiKey);
     
         // Extract relevant files from ZIP archive
         console.log(`Job ${jobId}: Unzipping files to ${extractionDir}`);
@@ -200,9 +201,9 @@ async function extractFiles(zipFilePath, destDir) {
 /**
  * Helper for API requests that return JSON
  */
-function apiRequest(url) {
+function apiRequest(url, apiKey) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { "Accept": "application/json" } }, (res) => {
+    https.get(url, { headers: { "Accept": "application/json", "api-key": apiKey } }, (res) => {
       if (res.statusCode !== 200) {
         return reject(new Error(`Request failed with status code ${res.statusCode}`));
       }
@@ -218,20 +219,20 @@ function apiRequest(url) {
 /**
  * Helper to download a file from a URL, handling redirects
  */
-function downloadFile(url, dest) {
+function downloadFile(url, dest, apiKey) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
 
     const request = (url) => {
-      https.get(url, (response) => {
-        if (response.statusCode === 301 || response.statusCode === 302) {
+      https.get(url, { headers: { "api-key": apiKey }}, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
           // follow redirect
-          return request(response.headers.location);
+          return request(res.headers.location);
         }
-        if (response.statusCode !== 200) {
-          return reject(new Error(`Failed to download file: ${response.statusCode}`));
+        if (res.statusCode !== 200) {
+          return reject(new Error(`Failed to download file: ${res.statusCode}`));
         }
-        response.pipe(file);
+        res.pipe(file);
       });
     };
 
