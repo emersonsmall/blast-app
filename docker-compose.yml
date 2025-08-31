@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n10763139-a1-repo
     ports:
       - "3000:3000"
     volumes:
@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: mariadb:latest
+    image: mariadb:10.6
     environment:
       - MARIADB_DATABASE=blast_app_db
       - MARIADB_USER=blast_user
