@@ -25,7 +25,6 @@ Core criteria
     Dockerfile
 
 ### Deploy the container
-aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com
 - **EC2 instance ID:** i-01d126ae83cc1ce0a
 - **Video timestamp:** 01:10
 
@@ -33,7 +32,7 @@ aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS
 
 - **One line description:** JWT authentication with admin and standard user roles. Admins can see all jobs, users, and genomes but 
 standard users can only see their own jobs and genomes.
-users seeded in dbInit.js
+Users seeded in dbInit.js
 - **Video timestamp:** 01:20
 - **Relevant files:**
     src/middleware/authMiddleware.js
