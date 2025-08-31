@@ -38,7 +38,7 @@ exports.getJobById = async (req, res) => {
     const job = await jobModel.getById(parseInt(req.params.id));
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.user_id !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 
@@ -88,11 +88,11 @@ exports.deleteJobById = async (req, res) => {
     const job = await jobModel.getById(id);
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.user_id !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 
-    await jobModel.delete(id);
+    await jobModel.deleteById(id);
     await resultModel.deleteByJobId(id); // delete associated results
     res.status(204).send();
   } catch (err) {
@@ -112,16 +112,16 @@ exports.getJobResult = async (req, res) => {
     const job = await jobModel.getById(id);
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.user_id !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 
     // Ensure the job is completed
-    if (job.status !== "completed" || !job.result_id) {
+    if (job.status !== "completed" || !job.resultId) {
       return res.status(400).json({ error: "Job is not completed yet." });
     }
 
-    const result = await resultModel.getById(job.result_id);
+    const result = await resultModel.getById(job.resultId);
     res.status(200).json(result);
   } catch (err) {
     console.error("Error fetching job result:", err);
