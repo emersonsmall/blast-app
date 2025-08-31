@@ -1,6 +1,7 @@
 const db = require("./db");
 const mariadb = require("mariadb");
 const config = require("../config");
+const { setTimeout } = require("timers/promises");
 
 const createTableQueries = [
     `CREATE TABLE IF NOT EXISTS users (
@@ -48,34 +49,43 @@ const seedUserQueries = [
 ];
 
 const initDatabase = async () => {
-    let conn;
-    try {
-        conn = await mariadb.createConnection({
-            host: config.db.host,
-            user: config.db.user,
-            password: config.db.password
-        });
+    const maxRetries = 5;
+    const retryDelay = 5000; // 5 seconds
 
-        // Create database if it doesn't exist
-        await conn.query(`DROP DATABASE IF EXISTS \`${config.db.database}\``); // TODO: remove
-        await conn.query(`CREATE DATABASE IF NOT EXISTS \`${config.db.database}\``);
-        await conn.end();
+    for (let i = 1; i <= maxRetries; i++) {
+        let conn;
+        try {
+            conn = await db.getConnection();
+            for (const query of createTableQueries) {
+                await conn.query(query);
+            }
 
-        conn = await db.getConnection();
-        for (const query of createTableQueries) {
-            await conn.query(query);
+            for (const query of seedUserQueries) {
+                await conn.query(query);
+            }
+
+            console.log("Database init completed.");
+            if (conn) conn.release();
+            return;
+        } catch (err) {
+            if (conn) conn.release();
+
+            // Only retry on connection-related errors
+            if (err.code === 'ER_GET_CONNECTION_TIMEOUT' || err.code === 'ECONNREFUSED') {
+                 console.error(`Connection attempt failed: ${err.message}`);
+                 if (i < maxRetries - 1) {
+                    console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+                    await setTimeout(retryDelay);
+                 } else {
+                    console.error("Failed to connect to the database after multiple retries.");
+                    process.exit(1);
+                 }
+            } else {
+                // For other errors (e.g., SQL syntax error), fail immediately
+                console.error("Error setting up database:", err);
+                process.exit(1);
+            }
         }
-
-        for (const query of seedUserQueries) {
-            await conn.query(query);
-        }
-
-        console.log("Database init completed.");
-    } catch (err) {
-        console.error("Error setting up database:", err);
-        process.exit(1);
-    } finally {
-        if (conn && conn.release) conn.release();
     }
 };
 

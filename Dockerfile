@@ -11,17 +11,23 @@ RUN apt-get update && apt-get install -y \
     ncbi-blast+ \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /py/packages
+
 # Install Python packages
 COPY scripts/requirements.txt ./scripts/requirements.txt
-RUN pip3 install -r ./scripts/requirements.txt
+RUN pip3 install -r ./scripts/requirements.txt --break-system-packages --target /py/packages
 
 # build final Node.js application
 FROM node:18-slim
 
 WORKDIR /app
 
+ENV PYTHONPATH=/py/packages
+
+# Copy Python packages, system dependencies, and Python from builder
 COPY --from=builder /usr/bin/ /usr/bin/
 COPY --from=builder /usr/lib/ /usr/lib/
+COPY --from=builder /py/packages /py/packages
 
 # set environment variables for BLAST
 ENV BLASTDB=/app/data/blastdb
@@ -35,10 +41,8 @@ RUN npm install
 COPY . .
 
 # Create directory for persistent data
-RUN mkdir -p /app/data/blastdb
+RUN mkdir -p /app/data
 
 EXPOSE 3000
 
 CMD [ "node", "server.js" ]
-
-

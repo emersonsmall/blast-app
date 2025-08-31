@@ -50,7 +50,7 @@ def extract_cds(fasta_path, gff_path, out_path, job_id):
             wrapped_seq = textwrap.wrap(full_cds, 80)
             wrapped_seq = "\n".join(wrapped_seq)
 
-            fasta_entries.append(f">{feature["ID"][0]}\n{wrapped_seq}\n")
+            fasta_entries.append(f">{feature['ID'][0]}\n{wrapped_seq}\n")
 
         if not fasta_entries:
             raise RuntimeError("No mRNA features with CDS children found in GFF file.")
