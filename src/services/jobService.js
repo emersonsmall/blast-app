@@ -121,7 +121,8 @@ async function getGenome(taxon, jobId) {
 
 function runBlast(queryGenome, targetGenome, jobId) {
     return new Promise((resolve, reject) => {
-        const scriptPath = path.join(process.cwd(), "scripts", "blast_workflow.py");
+        const scriptsDir = path.join(process.cwd(), "scripts");
+        const scriptPath = path.join(scriptsDir, "blast_workflow.py");
         const args = [
             scriptPath,
             queryGenome.fastaPath,
@@ -131,7 +132,7 @@ function runBlast(queryGenome, targetGenome, jobId) {
             jobId.toString()
         ];
 
-        const pythonProcess = spawn("python3", args);
+        const pythonProcess = spawn("python3", args, { cwd: scriptsDir });
 
         let result = '';
         let error = '';

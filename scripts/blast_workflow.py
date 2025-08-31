@@ -148,7 +148,6 @@ if __name__ == "__main__":
 
         print(f"Job {job_id}: Translating nucleotides to proteins", file=sys.stderr)
         translate_cds_to_prot(target_nt_out, target_prot_out)
-        # FAILS HERE
 
         results = run_blastx(query_nt_out, target_prot_out, job_id, db_name, blast_results_xml)
 
