@@ -28,6 +28,9 @@ const createBaseModel = (tableName, options = {}) => {
     const { allowedSortBy = ["id"], defaultSortBy = allowedSortBy[0] } = options;
 
     return {
+        allowedSortBy,
+        defaultSortBy,
+
         /**
          * CREATE: Inserts a new record.
          * @param {object} data     An object containing the fields and values to insert.
@@ -128,7 +131,16 @@ const createBaseModel = (tableName, options = {}) => {
                 const filterKeys = Object.keys(filters);
                 if (filterKeys.length > 0) {
                     const whereClauses = filterKeys.map(key => {
-                        params.push(filters[key]);
+                        let val = filters[key];
+                        if (typeof val === "string") {
+                            if (val.toLowerCase() === "true") {
+                                val = 1;
+                            } else if (val.toLowerCase() === "false") {
+                                val = 0;
+                            }
+                        }
+
+                        params.push(val);
                         return `${camelToSnakeCase(key)} = ?`;
                     });
                     const whereString = ` WHERE ${whereClauses.join(" AND ")}`;
@@ -140,7 +152,7 @@ const createBaseModel = (tableName, options = {}) => {
                 const sortBy = sorting.sortBy || defaultSortBy;
                 const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
                 if (allowedSortBy.includes(sortBy)) {
-                    query += ` ORDER BY ${sortBy} ${sortOrder}`;
+                    query += ` ORDER BY ${camelToSnakeCase(sortBy)} ${sortOrder}`;
                 }
 
                 // Pagination
@@ -149,9 +161,11 @@ const createBaseModel = (tableName, options = {}) => {
                 const offset = (page - 1) * limit;
                 query += ` LIMIT ? OFFSET ?`;
 
+                console.log("Executing query:", query, [...params, limit, offset]);
+                console.log("Executing count query:", countQuery, params);
                 const records = await conn.query(query, [...params, limit, offset]);
-                const [countRows] = await conn.query(countQuery, params);
-                const total = Number(countRows.total);
+                const [countResult] = await conn.query(countQuery, params);
+                const total = Number(countResult.total);
 
                 return {
                     records: records,
@@ -187,4 +201,4 @@ const createBaseModel = (tableName, options = {}) => {
     };
 };
 
-module.exports = {createBaseModel, mapKeysToCamelCase};
+module.exports = {createBaseModel, mapKeysToCamelCase, camelToSnakeCase, snakeToCamelCase};

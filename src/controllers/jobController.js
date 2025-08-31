@@ -56,13 +56,21 @@ exports.getJobById = async (req, res) => {
  */
 exports.getAllJobsForUser = async (req, res) => {
   try {
-    if (req.user.is_admin) {
-      // Admins can see all jobs
-      const jobs = await jobModel.getAll();
-      return res.status(200).json(jobs);
+    const { sortBy, sortOrder, page, limit, ...filters } = req.query;
+
+    const queryOptions = {
+        filters,
+        pagination: { page, limit },
+        sorting: { sortBy, sortOrder }
+    };
+    
+    if (!req.user.is_admin) {
+      // non-admins can only see their own jobs
+      queryOptions.filters.userId = req.user.id;
     }
-    const jobs = await jobModel.searchByField("user_id", req.user.id);
-    res.status(200).json(jobs);
+
+    const result = await jobModel.find(queryOptions);
+    res.status(200).json(result);
   } catch (err) {
     console.error("Error fetching jobs:", err);
     res.status(500).json({ error: "Failed to fetch jobs." });

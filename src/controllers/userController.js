@@ -6,19 +6,19 @@ const userModel = require("../models/userModel");
  * @access Public
  */
 exports.createUser = async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, is_admin } = req.body;
     if (!username || !password) {
         return res.status(400).json({ error: "Username and password are required." });
     }
 
     try {
         // Check if user already exists
-        const existingUser = await userModel.getByField("username", username);
-        if (existingUser) {
+        const existingUser = await userModel.searchByField("username", username);
+        if (existingUser.length > 0) {
             return res.status(409).json({ error: "Username already taken." });
         }
 
-        const newUser = await userModel.create({ username, password });
+        const newUser = await userModel.create({ username, password, is_admin });
 
         res.status(201).json({ id: newUser.id, username: newUser.username });
     } catch (err) {
@@ -66,8 +66,16 @@ exports.getAllUsers = async (req, res) => {
             return res.status(403).json({ error: "Forbidden" });
         }
 
-        const users = await userModel.getAll();
-        res.status(200).json(users.map(user => ({ id: user.id, username: user.username, is_admin: user.is_admin })));
+        const { sortBy, sortOrder, page, limit, ...filters } = req.query;
+
+        const queryOptions = {
+            filters,
+            pagination: { page, limit },
+            sorting: { sortBy, sortOrder }
+        };
+
+        const result = await userModel.find(queryOptions);
+        res.status(200).json(result);
     } catch (err) {
         console.error("Error fetching users:", err);
         res.status(500).json({ error: "Failed to fetch users." });
@@ -94,7 +102,7 @@ exports.updateUserById = async (req, res) => {
     }
 
     try {
-        const updatedUser = await userModel.update(reqId, { password });
+        const updatedUser = await userModel.updateById(reqId, { password });
         res.status(200).json({ id: updatedUser.id, username: updatedUser.username });
     } catch (err) {
         console.error("Error updating user:", err);
@@ -109,7 +117,7 @@ exports.updateUserById = async (req, res) => {
  */
 exports.deleteUserById = async (req, res) => {
     try {
-        const success = await userModel.delete(parseInt(req.params.id));
+        const success = await userModel.deleteById(parseInt(req.params.id));
         if (!success) {
             return res.status(404).json({ error: "User not found." });
         }

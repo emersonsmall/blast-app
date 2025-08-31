@@ -7,8 +7,21 @@ const genomeModel = require("../models/genomeModel");
  */
 exports.getAllGenomes = async (req, res) => {
     try {
-        const genomes = await genomeModel.getAll();
-        res.status(200).json(genomes);
+        const authenticatedUser = req.user;
+        if (!authenticatedUser.is_admin) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const { sortBy, sortOrder, page, limit, ...filters } = req.query;
+
+        const queryOptions = {
+            filters,
+            pagination: { page, limit },
+            sorting: { sortBy, sortOrder }
+        };
+
+        const result = await genomeModel.find(queryOptions);
+        res.status(200).json(result);
     } catch (err) {
         console.error("Error fetching genomes:", err);
         res.status(500).json({ error: "Error fetching genomes" });
@@ -30,8 +43,14 @@ exports.getAllGenomesForUser = async (req, res) => {
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        const genomes = await genomeModel.getUniqueGenomesByUserId(requestedUserId);
-        res.status(200).json(genomes);
+        const { sortBy, sortOrder, page, limit } = req.query;
+        const queryOptions = {
+            pagination: { page, limit },
+            sorting: { sortBy, sortOrder }
+        };
+
+        const result = await genomeModel.getUniqueGenomesByUserId(requestedUserId, queryOptions);
+        res.status(200).json(result);
     } catch (err) {
         console.error("Error fetching genomes:", err);
         res.status(500).json({ error: "Error fetching genomes" });

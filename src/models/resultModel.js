@@ -2,8 +2,8 @@ const baseModel = require("./baseModel");
 const db = require("../config/db");
 
 const resultModel = baseModel.createBaseModel("job_results", {
-    allowedSortBy: ["id", "e_value", "score", "identity_percent"],
-    defaultSortBy: "identity_percent"
+    allowedSortBy: ["id", "eValue", "score", "identityPercent"],
+    defaultSortBy: "identityPercent"
 });
 
 /**
