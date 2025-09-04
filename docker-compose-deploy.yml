@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: mariadb:10.6
+    image: mariadb:latest
     environment:
       - MARIADB_DATABASE=blast_app_db
       - MARIADB_USER=blast_user
