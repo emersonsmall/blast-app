@@ -1,5 +1,5 @@
 # Build environment with necessary dependencies
-FROM node:18-slim AS builder
+FROM node:latest AS builder
 
 # Create app directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY scripts/requirements.txt ./scripts/requirements.txt
 RUN pip3 install -r ./scripts/requirements.txt --break-system-packages --target /py/packages
 
 # build final Node.js application
-FROM node:18-slim
+FROM node:latest
 
 WORKDIR /app
 
