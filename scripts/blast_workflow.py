@@ -3,6 +3,7 @@ import json
 import subprocess
 import os
 import textwrap
+import boto3
 
 import gffutils
 import pyfaidx
@@ -12,17 +13,26 @@ from Bio import SeqIO
 # TODO: don't delete extracted CDS sequences after BLAST. relocate to data/accession ID directory or database. 
 # check if cds files already exist before extracting them again
 
-# TODO: add useful files/output to db/s3 and use for subsequent jobs if possible
-
 # Pipeline:
 # 1. Extract nucleotide CDS sequences from query and target genomes
 # 2. Translate target CDS to proteins (blastx does this internally for query)
 # 3. Run blastx to search query against target
 # 4. Parse results and return top hit
 
+def download_from_s3(bucket, key, local_path):
+    """Downloads a file from S3 to a local path."""
+    s3 = boto3.client('s3')
+    try:
+        s3.download_file(bucket, key, local_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to download {key} from bucket {bucket}: {e}")
+
 def extract_cds(fasta_path, gff_path, out_path, job_id):
     """Extracts all CDS features from a genome and writes them to a FASTA file."""
     try:
+        print(f"Job {job_id}: Extracting CDS", file=sys.stderr)
+        
+        print(f"Job {job_id}: Loading GFF file {gff_path}", file=sys.stderr)
         db = gffutils.create_db(
             gff_path,
             dbfn=':memory:',
@@ -133,7 +143,12 @@ def run_blastx(query_nt_path, target_prot_path, job_id, db_name, blast_results_x
 
 
 if __name__ == "__main__":
-    query_fasta, query_gff, target_fasta, target_gff, job_id = sys.argv[1:6]
+    bucket_name, query_fasta, query_gff, target_fasta, target_gff, job_id = sys.argv[1:7]
+
+    local_query_fasta = f"{job_id}_query.fna"
+    local_query_gff = f"{job_id}_query.gff"
+    local_target_fasta = f"{job_id}_target.fna"
+    local_target_gff = f"{job_id}_target.gff"
 
     query_nt_out = f"{job_id}_query_cds.fna"
     target_nt_out = f"{job_id}_target_cds.fna"
@@ -142,9 +157,14 @@ if __name__ == "__main__":
     blast_results_xml = f"{job_id}_blast_results.xml"
 
     try:
-        print(f"Job {job_id}: Extracting CDS", file=sys.stderr)
-        extract_cds(query_fasta, query_gff, query_nt_out, job_id)
-        extract_cds(target_fasta, target_gff, target_nt_out, job_id)
+        print(f"Job {job_id}: Downloading files from S3", file=sys.stderr)
+        download_from_s3(bucket_name, query_fasta, local_query_fasta)
+        download_from_s3(bucket_name, query_gff, local_query_gff)
+        download_from_s3(bucket_name, target_fasta, local_target_fasta)
+        download_from_s3(bucket_name, target_gff, local_target_gff)
+
+        extract_cds(local_query_fasta, local_query_gff, query_nt_out, job_id)
+        extract_cds(local_target_fasta, local_target_gff, target_nt_out, job_id)
 
         print(f"Job {job_id}: Translating nucleotides to proteins", file=sys.stderr)
         translate_cds_to_prot(target_nt_out, target_prot_out)
@@ -161,6 +181,10 @@ if __name__ == "__main__":
         # cleanup
         temp_file_exts = ["phr", "pin", "psq", "pdb", "pjs", "pot", "ptf", "pto"]
         files_to_remove = [
+            local_query_fasta,
+            local_query_gff,
+            local_target_fasta,
+            local_target_gff,
             query_nt_out,
             target_nt_out,
             target_prot_out,

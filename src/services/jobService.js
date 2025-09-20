@@ -4,14 +4,16 @@ const fsp = fs.promises;
 const path = require("path");
 const unzipper = require("unzipper");
 const { spawn } = require("child_process");
+const os = require("os");
 
 const jobModel = require("../models/jobModel");
 const resultModel = require("../models/resultModel");
 const genomeModel = require("../models/genomeModel");
 const config = require("../config");
+const s3  = require("../config/s3");
+const { PutObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
 
-const genbankApiBaseUrl = "https://api.ncbi.nlm.nih.gov/datasets/v2";
-const dataDir = path.join(process.cwd(), "data");
+const GENBANK_API_BASE_URL = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 
 // TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
@@ -59,8 +61,8 @@ async function processBlastJob(job) {
 async function getGenome(taxon, jobId) {
     console.log(`Job ${jobId}: Preparing genome for ${taxon}`);
 
-    // Get accession ID for the given taxon from GenBank API
-    const reportUrl = `${genbankApiBaseUrl}/genome/taxon/${encodeURIComponent(taxon)}/dataset_report?filters.reference_only=true`;
+    // Get accession ID for the given taxon
+    const reportUrl = `${GENBANK_API_BASE_URL}/genome/taxon/${encodeURIComponent(taxon)}/dataset_report?filters.reference_only=true`;
     const reportRes = await apiRequest(reportUrl, config.genbankApiKey);
     
     if (!reportRes.reports || reportRes.reports.length === 0) {
@@ -84,55 +86,60 @@ async function getGenome(taxon, jobId) {
         if (err.code !== 'ER_DUP_ENTRY') throw err;
     });
 
-    // Download FASTA and GFF files if they don't already exist
-    const extractionDir = path.join(dataDir, id);
-    const tempDir = path.join(dataDir, "temp");
+    const fastaKey = `${id}/${id}.fna`;
+    const gffKey = `${id}/${id}.gff`;
 
-    if (!await pathExists(extractionDir)) {
+    const fastaExists = await s3ObjectExists(config.aws.s3BucketName, fastaKey);
+    const gffExists = await s3ObjectExists(config.aws.s3BucketName, gffKey);
+    
+    if (!fastaExists || !gffExists) {
         console.log(`Job ${jobId}: Downloading files for ${id}`);
-        const downloadUrl = `${genbankApiBaseUrl}/genome/accession/${id}/download?include_annotation_type=GENOME_FASTA&include_annotation_type=GENOME_GFF`;
-        await fsp.mkdir(tempDir, { recursive: true });
+        const downloadUrl = `${GENBANK_API_BASE_URL}/genome/accession/${id}/download?include_annotation_type=GENOME_FASTA,GENOME_GFF`;
+        
+        const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "blast-"));
         const zipFilePath = path.join(tempDir, `${id}.zip`);
-    
+        
         await downloadFile(downloadUrl, zipFilePath, config.genbankApiKey);
-    
+        
         // Extract relevant files from ZIP archive
-        console.log(`Job ${jobId}: Unzipping files to ${extractionDir}`);
-        await fsp.mkdir(extractionDir);
-        await extractFiles(zipFilePath, extractionDir);
-    
-        await fsp.unlink(zipFilePath); // delete ZIP file after extraction
+        console.log(`Job ${jobId}: Unzipping files to ${tempDir}`);
+        await extractFiles(zipFilePath, tempDir);
+        
+        const fastaPath = await findFileByExt(tempDir, ".fna");
+        const gffPath = await findFileByExt(tempDir, ".gff");
+        
+        if (!fastaPath || !gffPath) {
+            throw new Error(`Failed to find GFF or FASTA for accession ${id}.`);
+        }
+        
+        console.log(`Job ${jobId}: Uploading files to S3`);
+        await uploadToS3(config.aws.s3BucketName, fastaKey, fastaPath);
+        await uploadToS3(config.aws.s3BucketName, gffKey, gffPath);
+
+        await fsp.rm(tempDir, { recursive: true, force: true });
     } else {
-        console.log(`Job ${jobId}: FASTA and GFF files already downloaded and extracted.`);
+        console.log(`Job ${jobId}: FASTA and GFF files already exist in S3.`);
     }
 
-    await fsp.rmdir(tempDir).catch(() => {}); // delete temp dir if empty
-
-    const fastaPath = await findFileByExt(extractionDir, ".fna");
-    const gffPath = await findFileByExt(extractionDir, ".gff");
-
-    if (!fastaPath || !gffPath) {
-        throw new Error(`Failed to find GFF or FASTA file for accession ID ${id}`);
-    }
-
-    return { fastaPath, gffPath, id };
+    return { fastaKey, gffKey, id };
 }
 
 
 function runBlast(queryGenome, targetGenome, jobId) {
     return new Promise((resolve, reject) => {
-        const scriptsDir = path.join(process.cwd(), "scripts");
+        const scriptsDir = "scripts";
         const scriptPath = path.join(scriptsDir, "blast_workflow.py");
         const args = [
             scriptPath,
-            queryGenome.fastaPath,
-            queryGenome.gffPath,
-            targetGenome.fastaPath,
-            targetGenome.gffPath,
+            config.aws.s3BucketName,
+            queryGenome.fastaKey,
+            queryGenome.gffKey,
+            targetGenome.fastaKey,
+            targetGenome.gffKey,
             jobId.toString()
         ];
 
-        const pythonProcess = spawn("python3", args, { cwd: scriptsDir });
+        const pythonProcess = spawn("python3", args);
 
         let result = '';
         let error = '';
@@ -171,18 +178,31 @@ async function findFileByExt(dir, ext) {
     }
 }
 
-async function pathExists(path) {
+async function s3ObjectExists(bucket, key) {
     try {
-        await fsp.access(path);
+        const command = new HeadObjectCommand({ Bucket: bucket, Key: key });
+        await s3.send(command);
         return true;
     } catch (err) {
-        return false;
+        if (err.name === 'NotFound') {
+            return false;
+        }
+        throw err;
     }
+}
+
+async function uploadToS3(bucket, key, filePath) {
+    const fileStream = fs.createReadStream(filePath);
+    const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: fileStream
+    });
+    return s3.send(command);
 }
 
 async function extractFiles(zipFilePath, destDir) {
     const dir = await unzipper.Open.file(zipFilePath);
-
     const relevantFiles = dir.files.filter(file => file.path.endsWith('.fna') || file.path.endsWith('.gff'));
 
     const extractionPromises = relevantFiles.map(file => {
@@ -199,6 +219,7 @@ async function extractFiles(zipFilePath, destDir) {
 
     await Promise.all(extractionPromises);
 }
+
 /**
  * Helper for API requests that return JSON
  */
@@ -215,7 +236,6 @@ function apiRequest(url, apiKey) {
     }).on('error', err => reject(err));
   });
 }
-
 
 /**
  * Helper to download a file from a URL, handling redirects

@@ -5,13 +5,8 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/app/data
-    environment:
-      - DB_HOST=db
-      - DB_USER=blast_user
-      - DB_PASSWORD=blast_password
-      - DB_NAME=blast_app_db
-      - JWT_SECRET=${JWT_SECRET}
-      - GENBANK_API_KEY=${GENBANK_API_KEY}
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy

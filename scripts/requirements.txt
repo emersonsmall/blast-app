@@ -1,3 +1,4 @@
 biopython
 pyfaidx
 gffutils
+boto3
