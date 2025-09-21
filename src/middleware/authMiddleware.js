@@ -22,7 +22,7 @@ exports.authenticateToken = (req, res, next) => {
 
 // Authorisation middleware to check admin permissions
 exports.authoriseAdmin = (req, res, next) => {
-   if (req.user && req.user.is_admin) {
+   if (req.user && req.user.isAdmin) {
       next();
    } else {
       console.log(`Forbidden: User '${req.user.username}' attempted to access admin route.`);

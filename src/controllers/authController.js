@@ -10,7 +10,7 @@ exports.login = async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const payload = { id: user.id, username: username, is_admin: user.is_admin };
+  const payload = { id: user.id, username: username, isAdmin: user.isAdmin };
 
   console.log(`User '${username}' logged in successfully.`);
   const token = jwt.sign(payload, config.jwtSecret, { expiresIn: "1h" });

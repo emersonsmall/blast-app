@@ -8,7 +8,7 @@ const genomeModel = require("../models/genomeModel");
 exports.getAllGenomes = async (req, res) => {
     try {
         const authenticatedUser = req.user;
-        if (!authenticatedUser.is_admin) {
+        if (!authenticatedUser.isAdmin) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -39,7 +39,7 @@ exports.getAllGenomesForUser = async (req, res) => {
         const authenticatedUser = req.user;
 
         // Allow access if the authenticated user is an admin or is requesting their own genomes
-        if (!authenticatedUser.is_admin && authenticatedUser.id !== requestedUserId) {
+        if (!authenticatedUser.isAdmin && authenticatedUser.id !== requestedUserId) {
             return res.status(403).json({ message: "Forbidden" });
         }
 

@@ -29,19 +29,12 @@ COPY --from=builder /usr/bin/ /usr/bin/
 COPY --from=builder /usr/lib/ /usr/lib/
 COPY --from=builder /py/packages /py/packages
 
-# set environment variables for BLAST
-ENV BLASTDB=/app/data/blastdb
-ENV PATH="/usr/bin:${PATH}"
-
 # Install Node.js dependencies
 COPY package*.json ./
 RUN npm install
 
 # Copy app source
 COPY . .
-
-# Create directory for persistent data
-RUN mkdir -p /app/data
 
 EXPOSE 3000
 

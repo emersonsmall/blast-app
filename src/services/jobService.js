@@ -14,10 +14,12 @@ const s3  = require("../config/s3");
 const { PutObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
 
 const GENBANK_API_BASE_URL = "https://api.ncbi.nlm.nih.gov/datasets/v2";
+const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 // TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
 // TODO: taxon -> accession ID relationship exists in jobs table. could use to avoid multiple API calls
+// TODO: check where python script outputs files
 
 // Synchronous to allow controller to respond immediately
 exports.createJob = async (queryTaxon, targetTaxon, userId) => {
@@ -83,7 +85,7 @@ async function getGenome(taxon, jobId) {
 
     // Add genome to database
     await genomeModel.create(genomeData).catch(err => {
-        if (err.code !== 'ER_DUP_ENTRY') throw err;
+        if (err.code !== POSTGRES_UNIQUE_VIOLATION) throw err;
     });
 
     const fastaKey = `${id}/${id}.fna`;

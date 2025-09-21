@@ -1,6 +1,6 @@
-const baseModel = require("./baseModel");
+const { createBaseModel } = require("./baseModel");
 
-const jobModel = baseModel.createBaseModel("jobs", {
+const jobModel = createBaseModel("jobs", {
     allowedSortBy: ["id", "status", "createdAt", "queryTaxon", "targetTaxon"],
     defaultSortBy: "createdAt"
 });

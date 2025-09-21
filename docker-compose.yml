@@ -2,31 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app/data
+      - "${PORT}:${PORT}"
     env_file:
       - .env
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
-
-  db:
-    image: mariadb:latest
-    environment:
-      - MARIADB_DATABASE=blast_app_db
-      - MARIADB_USER=blast_user
-      - MARIADB_PASSWORD=blast_password
-      - MARIADB_ROOT_PASSWORD=root_password
-    volumes:
-      - mariadb_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  mariadb_data:

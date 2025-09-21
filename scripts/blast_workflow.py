@@ -30,7 +30,7 @@ def download_from_s3(bucket, key, local_path):
 def extract_cds(fasta_path, gff_path, out_path, job_id):
     """Extracts all CDS features from a genome and writes them to a FASTA file."""
     try:
-        print(f"Job {job_id}: Extracting CDS", file=sys.stderr)
+        print(f"Job {job_id}: Extracting CDS from {fasta_path}", file=sys.stderr)
         
         print(f"Job {job_id}: Loading GFF file {gff_path}", file=sys.stderr)
         db = gffutils.create_db(

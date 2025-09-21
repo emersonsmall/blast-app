@@ -1,13 +1,14 @@
 const axios = require('axios');
 
 const BASE_URL = 'http://localhost:3000/api/v1';
+const TEST_TIMEOUT = 120000; // 2 minutes for job processing
 
 // This object will hold tokens and IDs created during the tests
 const state = {
     adminToken: null,
     userToken: null,
-    adminId: 1, // from dbInit.js
-    userId: 2,  // from dbInit.js
+    adminId: null,
+    userId: null,
     newUser: {
         username: `testuser_${Date.now()}`,
         password: 'password123',
@@ -51,14 +52,14 @@ async function runTests() {
         await testAuthEndpoints();
         await testUserEndpoints();
         await testJobEndpoints();
-        // Wait for jobs to process before testing genome and result endpoints
-        log("Waiting 1 minute for BLAST jobs to complete...");
-        await new Promise(resolve => setTimeout(resolve, 60000));
+
+        log(`Waiting ${TEST_TIMEOUT / 1000} seconds for BLAST jobs to complete...`);
+        await new Promise(resolve => setTimeout(resolve, TEST_TIMEOUT));
         await testJobResultEndpoint();
         await testGenomeEndpoints();
-        await testCleanup(); // Added a cleanup step
+        await cleanup(); // cleanup
 
-        console.log("\nAll tests passed successfully!");
+        console.log("\nALL TESTS PASSED!");
 
     } catch (error) {
         fail("An unexpected error occurred during testing", error);
@@ -82,6 +83,19 @@ async function testAuthEndpoints() {
         state.userToken = response.data.authToken;
         pass('Regular user can log in.');
 
+        // Get user IDs for later tests
+        const adminApi = getApiClient(state.adminToken);
+        usersRes = await adminApi.get('/users');
+        const adminUser = usersRes.data.records.find(u => u.username === 'admin');
+        const regularUser = usersRes.data.records.find(u => u.username === 'user1');
+
+        assert(adminUser && adminUser.id, 'Should find admin user by username.');
+        assert(regularUser && regularUser.id, 'Should find regular user by username.');
+
+        state.adminId = adminUser.id;
+        state.userId = regularUser.id;
+        pass(`Fetched user IDs for admin (${state.adminId}) and regular user (${state.userId}).`);
+
         // Test failed login
         await axios.post(`${BASE_URL}/auth/login`, { username: 'admin', password: 'wrongpassword' }).catch(err => {
             assert(err.response.status === 401, 'Invalid credentials should return 401 Unauthorized.');
@@ -100,7 +114,7 @@ async function testUserEndpoints() {
 
     try {
         // Create a new user (public)
-        let response = await axios.post(`${BASE_URL}/users`, { ...state.newUser, is_admin: false });
+        let response = await axios.post(`${BASE_URL}/users`, { ...state.newUser, isAdmin: false });
         assert(response.status === 201 && response.data.id, 'Should create a new user.');
         state.newUser.id = response.data.id;
         pass('Can create a new user.');
@@ -109,7 +123,7 @@ async function testUserEndpoints() {
         response = await adminApi.get('/users?sortBy=username&sortOrder=asc&limit=1&isAdmin=false');
         assert(response.status === 200, 'Admin should get users.');
         assert(response.data.records.length === 1, 'Pagination (limit=1) should work.');
-        assert(response.data.records[0].is_admin === 0, 'Filtering (isAdmin=false) should work.');
+        assert(response.data.records[0].isAdmin === false, 'Filtering (isAdmin=false) should work.');
         pass('Admin can get all users with pagination, sorting, and filtering.');
 
         // Test user cannot get all users
@@ -213,7 +227,7 @@ async function testGenomeEndpoints() {
     }
 }
 
-async function testCleanup() {
+async function cleanup() {
     log("Cleaning up created test data");
     const adminApi = getApiClient(state.adminToken);
     try {

@@ -10,8 +10,12 @@ const snakeToCamelCase = (str) => str.replace(/([-_][a-z])/g, group => group.toU
  */
 const mapKeysToCamelCase = (obj) => {
     if (obj === null || typeof obj !== 'object') return obj;
-    const newObj = {};
 
+    if (Array.isArray(obj)) {
+        return obj.map(item => mapKeysToCamelCase(item));
+    }
+
+    const newObj = {};
     for (const key in obj) {
         newObj[snakeToCamelCase(key)] = obj[key];
     }
@@ -37,22 +41,13 @@ const createBaseModel = (tableName, options = {}) => {
          * @returns {object}        The newly created record.
          */
         async create(data) {
-            let conn;
-            try {
-                conn = await db.getConnection();
+            const cols = Object.keys(data).map(camelToSnakeCase);
+            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+            const vals = Object.values(data);
 
-                const cols = Object.keys(data).map(camelToSnakeCase).join(", ");
-                const placeholders = Object.keys(data).map(() => "?").join(", ");
-                const vals = Object.values(data);
-
-                const query = `INSERT INTO ${tableName} (${cols}) VALUES (${placeholders})`;
-                const result = await conn.query(query, vals);
-
-                const [newRecord] = await conn.query(`SELECT * FROM ${tableName} WHERE id = ?`, [result.insertId]);
-                return mapKeysToCamelCase(newRecord);
-            } finally {
-                if (conn) conn.release();
-            }
+            const query = `INSERT INTO ${tableName} (${cols.join(", ")}) VALUES (${placeholders}) RETURNING *`;
+            const result = await db.query(query, vals);
+            return mapKeysToCamelCase(result.rows[0]);
         },
 
         /**
@@ -61,14 +56,9 @@ const createBaseModel = (tableName, options = {}) => {
          * @returns {object|null}   The record or null if not found.
          */
         async getById(id) {
-            let conn;
-            try {
-                conn = await db.getConnection();
-                const [record] = await conn.query(`SELECT * FROM ${tableName} WHERE id = ?`, [id]);
-                return record ? mapKeysToCamelCase(record) : null;
-            } finally {
-                if (conn) conn.release();
-            }
+            const query = `SELECT * FROM ${tableName} WHERE id = $1`;
+            const result = await db.query(query, [id]);
+            return result.rows.length ? mapKeysToCamelCase(result.rows[0]) : null;
         },
 
         /**
@@ -78,22 +68,15 @@ const createBaseModel = (tableName, options = {}) => {
          * @returns {object|null}   The updated record or null if not found.
         */
        async updateById(id, updates) {
-           let conn;
-           try {
-               conn = await db.getConnection();
-               
-               const setClause = Object.keys(updates)
-               .map(key => `${camelToSnakeCase(key)} = ?`)
-               .join(", ");
-               
-               if (!setClause) return await this.getById(id); // No updates
-               
-               const query = `UPDATE ${tableName} SET ${setClause} WHERE id = ?`;
-               await conn.query(query, [...Object.values(updates), id]);
-               return this.getById(id);
-            } finally {
-                if (conn) conn.release();
-            }
+           const updateEntries = Object.entries(updates);
+           if (updateEntries.length === 0) return this.getById(id);
+
+           const setClause = updateEntries.map(([key], i) => `${camelToSnakeCase(key)} = $${i + 2}`).join(", ");
+           const vals = [id, ...updateEntries.map(([, val]) => val)]; 
+
+           const query = `UPDATE ${tableName} SET ${setClause} WHERE id = $1 RETURNING *`;
+           const result = await db.query(query, vals);
+           return mapKeysToCamelCase(result.rows[0]);
         },
         
         /**
@@ -102,85 +85,70 @@ const createBaseModel = (tableName, options = {}) => {
          * @return {boolean}    True if deleted, false otherwise.
         */
        async deleteById(id) {
-           let conn;
-           try {
-               conn = await db.getConnection();
-               const result = await conn.query(`DELETE FROM ${tableName} WHERE id = ?`, [id]);
-               return result.affectedRows > 0;
-            } finally {
-                if (conn) conn.release();
-            }
+           const query = `DELETE FROM ${tableName} WHERE id = $1`;
+           const result = await db.query(query, [id]);
+           return result.rowCount > 0;
         },
 
         /**
-         * FIND method with filtering, sorting, and pagination.
+         * Find method with filtering, sorting, and pagination.
          * @param {object} queryOptions     Contains filters, pagination, and sorting
          * @returns {object}                { records, totalItems, totalPages, currentPage }
          */
         async find(queryOptions = {}) {
-            let conn;
-            try {
-                conn = await db.getConnection();
-                const { filters = {}, pagination = {}, sorting = {} } = queryOptions;
+            const { filters = {}, pagination = {}, sorting = {}} = queryOptions;
+            const params = [];
+            let paramIndex = 1;
 
-                let query = `SELECT * FROM ${tableName}`;
-                let countQuery = `SELECT COUNT(*) as total FROM ${tableName}`;
-                const params = [];
+            let query = `SELECT * FROM ${tableName}`;
+            let countQuery = `SELECT COUNT(*) as total FROM ${tableName}`;
 
-                // Filtering
-                const filterKeys = Object.keys(filters);
-                if (filterKeys.length > 0) {
-                    const whereClauses = filterKeys.map(key => {
-                        let val = filters[key];
-                        if (typeof val === "string") {
-                            if (val.toLowerCase() === "true") {
-                                val = 1;
-                            } else if (val.toLowerCase() === "false") {
-                                val = 0;
-                            }
-                        }
-
-                        params.push(val);
-                        return `${camelToSnakeCase(key)} = ?`;
-                    });
-                    const whereString = ` WHERE ${whereClauses.join(" AND ")}`;
-                    query += whereString;
-                    countQuery += whereString;
-                }
-
-                // Sorting
-                const sortBy = sorting.sortBy || defaultSortBy;
-                const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
-                if (allowedSortBy.includes(sortBy)) {
-                    query += ` ORDER BY ${camelToSnakeCase(sortBy)} ${sortOrder}`;
-                }
-
-                // Pagination
-                const limit = parseInt(pagination.limit, 10) || 10;
-                const page = parseInt(pagination.page, 10) || 1;
-                const offset = (page - 1) * limit;
-                query += ` LIMIT ? OFFSET ?`;
-
-                console.log("Executing query:", query, [...params, limit, offset]);
-                console.log("Executing count query:", countQuery, params);
-                const records = await conn.query(query, [...params, limit, offset]);
-                const [countResult] = await conn.query(countQuery, params);
-                const total = Number(countResult.total);
-
-                return {
-                    records: records,
-                    totalItems: total,
-                    totalPages: Math.ceil(total / limit),
-                    currentPage: page,
-                };
-
-            } finally {
-                if (conn) conn.release();
+            // Filtering
+            const filterKeys = Object.keys(filters);
+            if (filterKeys.length > 0) {
+                const whereClauses = filterKeys.map(key => {
+                    let val = filters[key];
+                    if (typeof val === 'string') {
+                        if (val.toLowerCase() === 'true') val = true;
+                        else if (val.toLowerCase() === 'false') val = false;
+                    }
+                    params.push(val);
+                    return `${camelToSnakeCase(key)} = $${paramIndex++}`;
+                });
+                const whereStr = ` WHERE ${whereClauses.join(" AND ")}`;
+                query += whereStr;
+                countQuery += whereStr;
             }
+
+            // Sorting
+            const sortBy = sorting.sortBy || defaultSortBy;
+            const sortOrder = sorting.sortOrder === 'asc' ? 'ASC' : 'DESC';
+            if (allowedSortBy.includes(sortBy)) {
+                query += ` ORDER BY ${camelToSnakeCase(sortBy)} ${sortOrder}`;
+            }
+
+            // Pagination
+            const limit = parseInt(pagination.limit, 10) || 1000;
+            const page = parseInt(pagination.page, 10) || 1;
+            const offset = (page - 1) * limit;
+            query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+            params.push(limit, offset);
+
+            // Execute queries
+            const recordsResult = await db.query(query, params);
+            const countResult = await db.query(countQuery, params.slice(0, filterKeys.length));
+            const total = parseInt(countResult.rows[0].total, 10);
+
+            return {
+                records: mapKeysToCamelCase(recordsResult.rows),
+                totalItems: total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: page
+            };
         },
 
         /**
-         * READ ALL: Retrieves all records from the table.
+         * Retrieves all records from the table.
          * @returns {array} An array of all records.
          */
         async getAll() {
@@ -189,7 +157,7 @@ const createBaseModel = (tableName, options = {}) => {
         },
         
         /**
-         * SEARCH: Searches records by a specified field and value.
+         * Searches records by a specified field and value.
          * @param {string} field    The field to search by.
          * @param {*} value         The value to search for.
          * @return {array}          An array of matching records.
@@ -201,4 +169,4 @@ const createBaseModel = (tableName, options = {}) => {
     };
 };
 
-module.exports = {createBaseModel, mapKeysToCamelCase, camelToSnakeCase, snakeToCamelCase};
+module.exports = {createBaseModel, mapKeysToCamelCase, camelToSnakeCase};

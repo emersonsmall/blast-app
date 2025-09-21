@@ -1,6 +1,6 @@
-const baseModel = require("./baseModel");
+const { createBaseModel } = require("./baseModel");
 
-const userModel = baseModel.createBaseModel("users", {
+const userModel = createBaseModel("users", {
     allowedSortBy: ["id", "username", "createdAt", "isAdmin"],
     defaultSortBy: "createdAt"
 });

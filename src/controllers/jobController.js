@@ -38,7 +38,7 @@ exports.getJobById = async (req, res) => {
     const job = await jobModel.getById(parseInt(req.params.id));
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.isAdmin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 
@@ -64,7 +64,7 @@ exports.getAllJobsForUser = async (req, res) => {
         sorting: { sortBy, sortOrder }
     };
     
-    if (!req.user.is_admin) {
+    if (!req.user.isAdmin) {
       // non-admins can only see their own jobs
       queryOptions.filters.userId = req.user.id;
     }
@@ -88,7 +88,7 @@ exports.deleteJobById = async (req, res) => {
     const job = await jobModel.getById(id);
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.isAdmin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 
@@ -112,7 +112,7 @@ exports.getJobResult = async (req, res) => {
     const job = await jobModel.getById(id);
 
     // Ensure the job exists and belongs to the requesting user (unless admin)
-    if (!job || (job.userId !== req.user.id && !req.user.is_admin)) {
+    if (!job || (job.userId !== req.user.id && !req.user.isAdmin)) {
       return res.status(404).json({ error: "Job not found." });
     }
 

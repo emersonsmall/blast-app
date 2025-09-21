@@ -6,7 +6,7 @@ const userModel = require("../models/userModel");
  * @access Public
  */
 exports.createUser = async (req, res) => {
-    const { username, password, is_admin } = req.body;
+    const { username, password, isAdmin } = req.body;
     if (!username || !password) {
         return res.status(400).json({ error: "Username and password are required." });
     }
@@ -18,7 +18,7 @@ exports.createUser = async (req, res) => {
             return res.status(409).json({ error: "Username already taken." });
         }
 
-        const newUser = await userModel.create({ username, password, is_admin });
+        const newUser = await userModel.create({ username, password, isAdmin });
 
         res.status(201).json({ id: newUser.id, username: newUser.username });
     } catch (err) {
@@ -38,7 +38,7 @@ exports.getUserById = async (req, res) => {
         const authenticatedUser = req.user;
 
         // Ensure the user exists and the requester is either admin or the user themselves
-        if (authenticatedUser.id !== reqId && !authenticatedUser.is_admin) {
+        if (authenticatedUser.id !== reqId && !authenticatedUser.isAdmin) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
@@ -47,7 +47,7 @@ exports.getUserById = async (req, res) => {
             return res.status(404).json({ error: "User not found." });
         }
 
-        res.status(200).json({ id: user.id, username: user.username, is_admin: user.is_admin });
+        res.status(200).json({ id: user.id, username: user.username, isAdmin: user.isAdmin });
     } catch (err) {
         console.error("Error fetching user:", err);
         res.status(500).json({ error: "Failed to fetch user." });
@@ -62,7 +62,7 @@ exports.getUserById = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
     try {
         const authenticatedUser = req.user;
-        if (!authenticatedUser.is_admin) {
+        if (!authenticatedUser.isAdmin) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
@@ -97,7 +97,7 @@ exports.updateUserById = async (req, res) => {
     }
 
     // Ensure the requester is either admin or the user themselves
-    if (authenticatedUser.id !== reqId && !authenticatedUser.is_admin) {
+    if (authenticatedUser.id !== reqId && !authenticatedUser.isAdmin) {
         return res.status(403).json({ error: "Forbidden" });
     }
 

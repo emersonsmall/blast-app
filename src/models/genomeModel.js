@@ -1,64 +1,63 @@
-const baseModel = require("./baseModel");
+const { createBaseModel, mapKeysToCamelCase, camelToSnakeCase } = require("./baseModel");
 const db = require("../config/db");
 
-const genomeModel = baseModel.createBaseModel("genomes", {
+const genomeModel = createBaseModel("genomes", {
     allowedSortBy: ["id", "commonName", "organismName", "totalSequenceLength", "totalGeneCount"],
-    defaultSortBy: "id"
+    defaultSortBy: "organismName"
 });
 
 /**
  * Finds all unique genomes that a specific user has run jobs with.
  * @param {number} userId   The ID of the user.
- * @returns {Array}         An array of genome metadata objects.
+ * @returns {object}        An object of records and pagination metadata.
  */
 genomeModel.getUniqueGenomesByUserId = async (userId, queryOptions = {}) => {
-    let conn;
-    try {
-        conn = await db.getConnection();
-        const { pagination = {}, sorting = {} } = queryOptions;
+    const { pagination = {}, sorting = {} } = queryOptions;
 
-        // query joins jobs and genomes tables to get unique genomes for the user
-        let query = `
-            SELECT DISTINCT g.* FROM genomes g
-            JOIN jobs j ON g.id = j.query_accession OR g.id = j.target_accession
-            WHERE j.user_id = ?
-        `;
-        const params = [userId];
+    // Main query for fetching records
+    let query = `
+        SELECT DISTINCT g.* FROM genomes g
+        JOIN jobs j ON g.id = j.query_accession OR g.id = j.target_accession
+        WHERE j.user_id = $1
+    `;
 
-        // Sorting
-        const sortBy = sorting.sortBy || genomeModel.defaultSortBy;
-        const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
-        if (genomeModel.allowedSortBy.includes(sortBy)) {
-            query += ` ORDER BY g.${baseModel.camelToSnakeCase(sortBy)} ${sortOrder}`;
-        }
+    // Count query for pagination
+    let countQuery = `
+        SELECT COUNT(DISTINCT g.id) AS total FROM genomes g
+        JOIN jobs j ON g.id = j.query_accession OR g.id = j.target_accession
+        WHERE j.user_id = $1
+    `;
 
-        // Pagination
-        const limit = parseInt(pagination.limit, 10) || 10;
-        const page = parseInt(pagination.page, 10) || 1;
-        const offset = (page - 1) * limit;
-        query += ` LIMIT ? OFFSET ?`;
-        params.push(limit, offset);
+    const params = [userId];
+    let paramIndex = 2; // Start from $2 since $1 is taken by userId
 
-        // Separate count query to get total count for pagination metadata
-        const countQuery = `
-            SELECT COUNT(DISTINCT g.id) as total FROM genomes g
-            JOIN jobs j ON g.id = j.query_accession OR g.id = j.target_accession
-            WHERE j.user_id = ?
-        `;
-        const [countResult] = await conn.query(countQuery, [userId]);
-        const total = Number(countResult.total);
-
-        console.log("Executing query:", query, params);
-        const genomes = await conn.query(query, params);
-        return {
-            records: genomes.map(g => baseModel.mapKeysToCamelCase(g)),
-            totalItems: total,
-            totalPages: Math.ceil(total / limit),
-            currentPage: page,
-        };
-    } finally {
-        if (conn) conn.release();
+    // Sorting
+    const sortBy = sorting.sortBy || genomeModel.defaultSortBy;
+    const sortOrder = sorting.sortOrder === "asc" ? "ASC" : "DESC";
+    if (genomeModel.allowedSortBy.includes(sortBy)) {
+        query += ` ORDER BY ${camelToSnakeCase(sortBy)} ${sortOrder}`;
     }
+
+    // Pagination
+    const limit = parseInt(pagination.limit, 10) || 10;
+    const page = parseInt(pagination.page, 10) || 1;
+    const offset = (page - 1) * limit;
+
+    query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(limit, offset);
+
+    // Execute queries
+    const genomeResult = await db.query(query, params);
+    const countResult = await db.query(countQuery, [userId]);
+
+    const total = parseInt(countResult.rows[0].total, 10);
+
+    return {
+        records: mapKeysToCamelCase(genomeResult.rows),
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page
+    };
 };
 
 module.exports = genomeModel;
