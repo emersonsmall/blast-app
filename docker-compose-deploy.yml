@@ -1,37 +1,8 @@
 services:
   app:
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n10763139-a1-repo
+    image: xxx
     ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - DB_HOST=db
-      - DB_USER=blast_user
-      - DB_PASSWORD=blast_password
-      - DB_NAME=blast_app_db
-      - JWT_SECRET=${JWT_SECRET}
-      - GENBANK_API_KEY=${GENBANK_API_KEY}
-    depends_on:
-      db:
-        condition: service_healthy
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
     restart: unless-stopped
-
-  db:
-    image: mariadb:latest
-    environment:
-      - MARIADB_DATABASE=blast_app_db
-      - MARIADB_USER=blast_user
-      - MARIADB_PASSWORD=blast_password
-      - MARIADB_ROOT_PASSWORD=root_password
-    volumes:
-      - mariadb_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  mariadb_data:

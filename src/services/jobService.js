@@ -11,14 +11,15 @@ const resultModel = require("../models/resultModel");
 const genomeModel = require("../models/genomeModel");
 const config = require("../config");
 const s3  = require("../config/s3");
-const { PutObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
+
+const { PutObjectCommand, HeadObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const GENBANK_API_BASE_URL = "https://api.ncbi.nlm.nih.gov/datasets/v2";
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 // TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
-// TODO: taxon -> accession ID relationship exists in jobs table. could use to avoid multiple API calls
 // TODO: check where python script outputs files
 
 // Synchronous to allow controller to respond immediately
@@ -39,16 +40,16 @@ async function processBlastJob(job) {
         console.log(`Job ${job.id}: Running BLAST`);
         jobModel.updateById(job.id, { 
             status: "running_blast",
-            query_accession: queryGenome.id, 
-            target_accession: targetGenome.id 
+            query_accession: queryGenome.accession, 
+            target_accession: targetGenome.accession
         });
-        const blastResult = await runBlast(queryGenome, targetGenome, job.id);
+        const top_hit = await runBlast(queryGenome, targetGenome, job.id);
 
-        if (blastResult.error) {
-            throw new Error(blastResult.error);
+        if (top_hit.error) {
+            throw new Error(top_hit.error);
         }
 
-        newResult = await resultModel.create(blastResult.top_hit);
+        newResult = await resultModel.create(top_hit);
         console.log(JSON.stringify(newResult));
 
         await jobModel.updateById(job.id, { status: "completed", result_id: newResult.id });
@@ -72,34 +73,33 @@ async function getGenome(taxon, jobId) {
     }
 
     const report = reportRes.reports[0]; // always take first result
-    const id = report.accession;
+    const accession = report.accession;
 
     const genomeData = {
-        id: id,
+        id: accession,
         organismName: report.organism.organism_name,
         commonName: report.organism.common_name, // not always provided
         totalSequenceLength: report.assembly_stats.total_sequence_length,
         totalGeneCount: report.annotation_info.stats.gene_counts.total
     };
-    console.log(`Job ${jobId}: Genome data: ${JSON.stringify(genomeData)}`);
 
     // Add genome to database
     await genomeModel.create(genomeData).catch(err => {
         if (err.code !== POSTGRES_UNIQUE_VIOLATION) throw err;
     });
 
-    const fastaKey = `${id}/${id}.fna`;
-    const gffKey = `${id}/${id}.gff`;
+    const fastaKey = `${accession}/${accession}.fna`;
+    const gffKey = `${accession}/${accession}.gff`;
 
     const fastaExists = await s3ObjectExists(config.aws.s3BucketName, fastaKey);
     const gffExists = await s3ObjectExists(config.aws.s3BucketName, gffKey);
     
     if (!fastaExists || !gffExists) {
-        console.log(`Job ${jobId}: Downloading files for ${id}`);
-        const downloadUrl = `${GENBANK_API_BASE_URL}/genome/accession/${id}/download?include_annotation_type=GENOME_FASTA,GENOME_GFF`;
+        console.log(`Job ${jobId}: Downloading files for ${accession}`);
+        const downloadUrl = `${GENBANK_API_BASE_URL}/genome/accession/${accession}/download?include_annotation_type=GENOME_FASTA,GENOME_GFF`;
         
         const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "blast-"));
-        const zipFilePath = path.join(tempDir, `${id}.zip`);
+        const zipFilePath = path.join(tempDir, `${accession}.zip`);
         
         await downloadFile(downloadUrl, zipFilePath, config.genbankApiKey);
         
@@ -111,37 +111,40 @@ async function getGenome(taxon, jobId) {
         const gffPath = await findFileByExt(tempDir, ".gff");
         
         if (!fastaPath || !gffPath) {
-            throw new Error(`Failed to find GFF or FASTA for accession ${id}.`);
+            throw new Error(`Failed to find GFF or FASTA for accession ${accession}.`);
         }
         
         console.log(`Job ${jobId}: Uploading files to S3`);
-        await uploadToS3(config.aws.s3BucketName, fastaKey, fastaPath);
-        await uploadToS3(config.aws.s3BucketName, gffKey, gffPath);
+        await uploadFileToS3(config.aws.s3BucketName, fastaKey, fastaPath);
+        await uploadFileToS3(config.aws.s3BucketName, gffKey, gffPath);
 
         await fsp.rm(tempDir, { recursive: true, force: true });
     } else {
         console.log(`Job ${jobId}: FASTA and GFF files already exist in S3.`);
     }
 
-    return { fastaKey, gffKey, id };
+    const fastaCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: fastaKey });
+    const fastaUrl = await getSignedUrl(s3, fastaCmd, { expiresIn: 3600 });
+
+    const gffCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: gffKey });
+    const gffUrl = await getSignedUrl(s3, gffCmd, { expiresIn: 3600 });
+
+    return { fastaUrl, gffUrl, accession };
 }
 
 
 function runBlast(queryGenome, targetGenome, jobId) {
     return new Promise((resolve, reject) => {
-        const scriptsDir = "scripts";
-        const scriptPath = path.join(scriptsDir, "blast_workflow.py");
         const args = [
-            scriptPath,
-            config.aws.s3BucketName,
-            queryGenome.fastaKey,
-            queryGenome.gffKey,
-            targetGenome.fastaKey,
-            targetGenome.gffKey,
+            "blast_workflow.py",
+            queryGenome.fastaUrl,
+            queryGenome.gffUrl,
+            targetGenome.fastaUrl,
+            targetGenome.gffUrl,
             jobId.toString()
         ];
 
-        const pythonProcess = spawn("python3", args);
+        const pythonProcess = spawn("python", args, { cwd: "scripts" });
 
         let result = '';
         let error = '';
@@ -193,7 +196,7 @@ async function s3ObjectExists(bucket, key) {
     }
 }
 
-async function uploadToS3(bucket, key, filePath) {
+async function uploadFileToS3(bucket, key, filePath) {
     const fileStream = fs.createReadStream(filePath);
     const command = new PutObjectCommand({
         Bucket: bucket,

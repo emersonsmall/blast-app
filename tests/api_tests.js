@@ -1,7 +1,12 @@
 const axios = require('axios');
 
 const BASE_URL = 'http://localhost:3000/api/v1';
-const TEST_TIMEOUT = 120000; // 2 minutes for job processing
+const TEST_TIMEOUT = 90000;
+
+QUERY_TAXON_1 = 'yeast';
+TARGET_TAXON_1 = 'e coli';
+QUERY_TAXON_2 = 'Caenorhabditis elegans';
+TARGET_TAXON_2 = 'Caenorhabditis briggsae';
 
 // This object will hold tokens and IDs created during the tests
 const state = {
@@ -158,15 +163,15 @@ async function testJobEndpoints() {
     const userApi = getApiClient(state.userToken);
     try {
         // Create two jobs
-        await userApi.post('/jobs', { queryTaxon: 'yeast', targetTaxon: 'e coli' });
+        await userApi.post('/jobs', { queryTaxon: QUERY_TAXON_1, targetTaxon: TARGET_TAXON_1 });
         pass('Can create job 1.');
-        await userApi.post('/jobs', { queryTaxon: 'e coli', targetTaxon: 'yeast' });
+        await userApi.post('/jobs', { queryTaxon: QUERY_TAXON_2, targetTaxon: TARGET_TAXON_2 });
         pass('Can create job 2.');
         
         // A small delay to give the server a moment to insert the records into the DB
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Fetch the two most recent jobs to reliably get their IDs
+        // Fetch the two most recent jobs to get their IDs
         const jobsResponse = await userApi.get('/jobs?sortBy=createdAt&sortOrder=desc&limit=2');
         assert(jobsResponse.data.records.length >= 2, 'Should have fetched the two newly created jobs.');
 
@@ -175,7 +180,7 @@ async function testJobEndpoints() {
         state.job1Id = jobsResponse.data.records[1].id;
         assert(state.job1Id !== state.job2Id, `Job IDs should be unique. Got ${state.job1Id} and ${state.job2Id}.`);
         
-        // Test basic pagination
+        // Test pagination
         const response = await userApi.get('/jobs?limit=1&page=1');
         assert(response.status === 200 && response.data.records.length === 1, 'Should get jobs with pagination.');
         pass('Can get jobs with pagination.');

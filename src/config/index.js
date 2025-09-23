@@ -1,11 +1,16 @@
+require("dotenv").config();
+
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined in environment variables.");
 }
 
-const requiredAwsVars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION", "S3_BUCKET_NAME"];
-for (const awsVar of requiredAwsVars) {
-  if (!process.env[awsVar]) {
-    throw new Error(`${awsVar} is not defined in environment variables.`);
+const requiredEnvVars = [
+  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION", "S3_BUCKET_NAME",
+  "JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"
+];
+for (const requiredVar of requiredEnvVars) {
+  if (!process.env[requiredVar]) {
+    throw new Error(`ERROR: ${requiredVar} is not defined in environment variables.`);
   }
 }
 
