@@ -8,6 +8,8 @@ TARGET_TAXON_1 = 'e coli';
 QUERY_TAXON_2 = 'Plasmodium falciparum';
 TARGET_TAXON_2 = 'Plasmodium berghei';
 
+PASSWORD = "adminU5*r standardU5*r";
+
 // This object will hold tokens and IDs created during the tests
 const state = {
     adminToken: null,

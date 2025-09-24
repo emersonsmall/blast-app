@@ -5,8 +5,8 @@ if (!process.env.JWT_SECRET) {
 }
 
 const requiredEnvVars = [
-  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_REGION", "S3_BUCKET_NAME",
-  "JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"
+  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "S3_BUCKET_NAME",
+  "JWT_SECRET", "DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "COGNITO_USER_POOL_ID", "COGNITO_CLIENT_ID", "COGNITO_CLIENT_SECRET",
 ];
 for (const requiredVar of requiredEnvVars) {
   if (!process.env[requiredVar]) {
@@ -33,6 +33,11 @@ module.exports = {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     sessionToken: process.env.AWS_SESSION_TOKEN,
     region: process.env.AWS_REGION || "ap-southeast-2",
-    s3BucketName: process.env.S3_BUCKET_NAME
+    s3BucketName: process.env.S3_BUCKET_NAME,
+    cognito: {
+      userPoolId: process.env.COGNITO_USER_POOL_ID,
+      clientId: process.env.COGNITO_CLIENT_ID,
+      clientSecret: process.env.COGNITO_CLIENT_SECRET
+    }
   }
 }

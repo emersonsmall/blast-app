@@ -1,8 +1,20 @@
-const jwt = require("jsonwebtoken");
+// External modules
+const { 
+   CognitoJwtVerifier
+} = require("aws-jwt-verify");
+
+// Internal modules
 const config = require("../config");
 
+
+const verifier = CognitoJwtVerifier.create({
+   userPoolId: config.aws.cognito.userPoolId,
+   tokenUse: "id",
+   clientId: config.aws.cognito.clientId,
+});
+
 // Authentication middleware to verify JWT
-exports.authenticateToken = (req, res, next) => {
+exports.authenticateToken = async (req, res, next) => {
    const authHeader = req.headers["authorization"];
    const token = authHeader && authHeader.split(" ")[1];
 
@@ -10,13 +22,18 @@ exports.authenticateToken = (req, res, next) => {
       return res.sendStatus(401); // Unauthorized
    }
 
-   jwt.verify(token, config.jwtSecret, (err, user) => {
-      if (err) {
-         return res.sendStatus(403); // Forbidden
-      }
-      req.user = user; // Attach user info to request
+   try {
+      const payload = await verifier.verify(token);
+      req.user = {
+         id: payload.sub,
+         username: payload["cognito:username"],
+         isAdmin: payload["cognito:groups"]?.includes("Admins") || false
+      };
       next();
-   });
+   } catch (err) {
+      console.error("Token verification failed:", err);
+      return res.sendStatus(403); // Forbidden
+   }
 };
 
 

@@ -10,13 +10,6 @@ const createJobStatusType = `
 `;
 
 const createTableQueries = [
-    `CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        is_admin BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    )`,
     `CREATE TABLE IF NOT EXISTS genomes (
         id VARCHAR(50) PRIMARY KEY,
         common_name VARCHAR(255),
@@ -34,7 +27,7 @@ const createTableQueries = [
     )`,
     `CREATE TABLE IF NOT EXISTS jobs (
         id SERIAL PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
         query_taxon VARCHAR(255) NOT NULL,
         target_taxon VARCHAR(255) NOT NULL,
         query_accession VARCHAR(50),
@@ -42,16 +35,10 @@ const createTableQueries = [
         status job_status DEFAULT 'pending',
         result_id INT UNIQUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (query_accession) REFERENCES genomes(id) ON DELETE SET NULL,
         FOREIGN KEY (target_accession) REFERENCES genomes(id) ON DELETE SET NULL,
         FOREIGN KEY (result_id) REFERENCES job_results(id) ON DELETE SET NULL
     )`
-];
-
-const seedUserQueries = [
-    `INSERT INTO users (username, password, is_admin) VALUES ('admin', 'admin', TRUE) ON CONFLICT (username) DO NOTHING`,
-    `INSERT INTO users (username, password, is_admin) VALUES ('user1', 'user1', FALSE) ON CONFLICT (username) DO NOTHING`
 ];
 
 const initDatabase = async () => {
@@ -67,10 +54,6 @@ const initDatabase = async () => {
             await client.query(createJobStatusType);
 
             for (const query of createTableQueries) {
-                await client.query(query);
-            }
-
-            for (const query of seedUserQueries) {
                 await client.query(query);
             }
 
