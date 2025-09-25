@@ -1,8 +1,0 @@
-services:
-  app:
-    image: xxx
-    ports:
-      - "${PORT}:${PORT}"
-    env_file:
-      - .env
-    restart: unless-stopped
