@@ -4,19 +4,19 @@ const router = express.Router();
 const userController = require("../../../controllers/userController");
 const { authenticateToken, authoriseAdmin } = require("../../../middleware/authMiddleware");
 
-router.use(authenticateToken, authoriseAdmin);
+router.use(authenticateToken);
 
 /**
  * @route GET /api/v1/users
  * @desc Get all users from Cognito
  * @access Private (admin only)
  */
-router.get("/", userController.getAllUsers);
+router.get("/", authoriseAdmin, userController.getAllUsers);
 
 /**
  * @route GET /api/v1/users/:id
  * @desc Get user from Cognito by username 
- * @access Private (admin only)
+ * @access Private
  */
 router.get("/:id", userController.getUserById);
 
@@ -25,6 +25,6 @@ router.get("/:id", userController.getUserById);
  * @desc Delete user from Cognito by username
  * @access Private (admin only)
  */
-router.delete("/:id", userController.deleteUserById);
+router.delete("/:id", authoriseAdmin, userController.deleteUserById);
 
 module.exports = router;

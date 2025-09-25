@@ -1,4 +1,3 @@
-require('dotenv').config();
 const axios = require('axios');
 const { CognitoIdentityProviderClient, AdminConfirmSignUpCommand } = require("@aws-sdk/client-cognito-identity-provider");
 const config = require("../src/config"); // Adjust path to your config file
@@ -9,9 +8,6 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 // 1. Create a user in your Cognito User Pool (e.g., 'test-admin').
 // 2. Add this user to a group named "Admins".
 // 3. Make sure this user is CONFIRMED.
-// 4. Set their credentials in a .env file at the root of your project.
-//    TEST_ADMIN_USER=test-admin
-//    TEST_ADMIN_PASSWORD=YourSecurePassword123!
 // ------------------------------------
 const ADMIN_CREDENTIALS = {
     username: "test-admin",

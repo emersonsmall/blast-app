@@ -60,11 +60,17 @@ exports.getAllUsers = async (req, res) => {
  */
 exports.getUserById = async (req, res) => {
     try {
-        const userId = req.params.id;
-        const user = await getUserBySub(userId);
+        const requestedUserId = req.params.id;
+        const authenticatedUser = req.user;
+
+        if (!authenticatedUser.isAdmin && authenticatedUser.id !== requestedUserId) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const user = await getUserBySub(requestedUserId);
 
         if (!user) {
-            return res.status(404).json({ error: "User not found." });
+            return res.status(404).json({ message: "User not found." });
         }
 
         res.status(200).json(user);
