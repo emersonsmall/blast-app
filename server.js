@@ -7,7 +7,6 @@ const authRoutes = require("./src/routes/api/v1/auth");
 const jobRoutes = require("./src/routes/api/v1/jobs");
 const userRoutes = require("./src/routes/api/v1/users");
 const genomeRoutes = require("./src/routes/api/v1/genomes");
-const pageRoutes = require("./src/routes/pages");
 
 const app = express();
 
@@ -19,9 +18,6 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/jobs", jobRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/genomes", genomeRoutes);
-
-// Web page routes
-app.use("/", pageRoutes);
 
 (async () => {
     await dbInit();

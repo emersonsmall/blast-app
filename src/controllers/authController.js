@@ -8,11 +8,11 @@ const config = require("../config");
 
 const cognitoClient = new Cognito.CognitoIdentityProviderClient({ region: config.aws.region });
 
+
 const generateSecretHash = (username) => {
-  return crypto
-    .createHmac("SHA256", config.aws.cognito.clientSecret)
-    .update(username + config.aws.cognito.clientId)
-    .digest("base64");
+  return crypto.createHmac('sha256', config.aws.cognito.clientSecret)
+        .update(username + config.aws.cognito.clientId)
+        .digest('base64');
 }
 
 exports.register = async (req, res) => {
@@ -48,7 +48,7 @@ exports.register = async (req, res) => {
 };
 
 
-exports.confirmRegistration = async (req, res) => {
+exports.confirm = async (req, res) => {
   const { username, confirmationCode } = req.body;
 
   if (!username || !confirmationCode) {
@@ -87,7 +87,7 @@ exports.login = async (req, res) => {
 
   try {
     const params = {
-      AuthFlow: "USER_PASSWORD_AUTH",
+      AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
       ClientId: config.aws.cognito.clientId,
       AuthParameters: {
         USERNAME: username,
@@ -96,11 +96,13 @@ exports.login = async (req, res) => {
       }
     };
 
-    const {
-      AuthenticationResult
-    } = await cognitoClient.send(new Cognito.InitiateAuthCommand(params));
+    let cognitoRes = await cognitoClient.send(new Cognito.InitiateAuthCommand(params));
+    console.log(cognitoRes);
+
+    const idToken = cognitoRes.AuthenticationResult.IdToken;
+
     res.status(200).json({
-      authToken: AuthenticationResult.IdToken,
+      authToken: idToken,
     });
 
   } catch (err) {
@@ -111,3 +113,5 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+exports.generateSecretHash = generateSecretHash;

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const genomeController = require('../../../controllers/genomeController');
-const { authenticateToken, authoriseAdmin } = require('../../../middleware/authMiddleware');
+const { authenticateToken } = require('../../../middleware/authMiddleware');
 
 // All routes in this file require valid JWT
 router.use(authenticateToken);
