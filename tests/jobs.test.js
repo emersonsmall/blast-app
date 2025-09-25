@@ -1,21 +1,17 @@
-const { getApiClient, registerAndLoginUser, cleanupUser, EMAIL } = require('./helpers');
+const { getApiClient, registerAndLoginUser, cleanupUser, generateTestUser } = require('./helpers');
 
 describe('Jobs API (/api/v1/jobs)', () => {
     let userApi;
-    let user;
+    let testUser;
     let createdJobId;
 
     beforeAll(async () => {
-        user = await registerAndLoginUser({
-            username: `job_test_user_${Date.now()}`,
-            password: 'Password123!',
-            email: EMAIL,
-        });
-        userApi = getApiClient(user.token);
+        testUser = await registerAndLoginUser(generateTestUser());
+        userApi = getApiClient(testUser.token);
     });
 
     afterAll(async () => {
-        await cleanupUser(user.username);
+        await cleanupUser(testUser.username);
     });
 
     it('should create a new job and return status 202 (Accepted)', async () => {
@@ -36,7 +32,7 @@ describe('Jobs API (/api/v1/jobs)', () => {
         expect(response.data.records.length).toBeGreaterThan(0);
         
         const job = response.data.records[0];
-        expect(job.userId).toBe(user.sub);
+        expect(job.userId).toBe(testUser.sub);
         createdJobId = job.id; // Save for the next test
     });
 
@@ -63,5 +59,5 @@ describe('Jobs API (/api/v1/jobs)', () => {
         const resultResponse = await userApi.get(`/jobs/${createdJobId}/result`);
         expect(resultResponse.status).toBe(200);
         expect(resultResponse.data.eValue).toBeDefined();
-    }, 120000); // Override default timeout for this specific test
+    }, 120000); // Override default timeout for this test
 });

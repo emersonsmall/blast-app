@@ -1,9 +1,16 @@
-const { getApiClient, getAdminToken, registerAndLoginUser, cleanupUser, EMAIL } = require('./helpers');
+const { 
+    getApiClient, 
+    getAdminToken, 
+    registerAndLoginUser, 
+    cleanupUser, 
+    generateTestUser,
+    sleep
+} = require('./helpers');
 
 describe('Genomes API (/api/v1/genomes)', () => {
     let adminApi;
     let userApi;
-    let regularUser;
+    let testUser;
 
     beforeAll(async () => {
         // Set up an admin user to test admin-only functionality
@@ -11,12 +18,8 @@ describe('Genomes API (/api/v1/genomes)', () => {
         adminApi = getApiClient(adminToken);
 
         // Set up a regular user for testing standard access
-        regularUser = await registerAndLoginUser({
-            username: `genome_test_user_${Date.now()}`,
-            password: 'Password123!',
-            email: EMAIL,
-        });
-        userApi = getApiClient(regularUser.token);
+        testUser = await registerAndLoginUser(generateTestUser());
+        userApi = getApiClient(testUser.token);
 
         // Have the user create a job to ensure they have associated genomes
         await userApi.post('/jobs', {
@@ -26,16 +29,16 @@ describe('Genomes API (/api/v1/genomes)', () => {
 
         // Wait for the job to be processed so genomes are in the DB
         console.log('Waiting for job to be processed to populate genomes...');
-        await new Promise(resolve => setTimeout(resolve, 15000)); // Wait 15s
+        sleep(15000);
     });
 
     afterAll(async () => {
         // Clean up the user created for these tests
-        await cleanupUser(regularUser.username);
+        await cleanupUser(testUser.username);
     });
 
     it('should allow a user to get their own genomes using a userId filter', async () => {
-        const response = await userApi.get(`/genomes?userId=${regularUser.sub}`);
+        const response = await userApi.get(`/genomes?userId=${testUser.sub}`);
         expect(response.status).toBe(200);
         expect(response.data.records.length).toBeGreaterThan(0);
         expect(response.data.records[0].organismName).toBeDefined();
@@ -56,7 +59,7 @@ describe('Genomes API (/api/v1/genomes)', () => {
     });
 
     it('should allow an admin to get a specific user\'s genomes using a userId filter', async () => {
-        const response = await adminApi.get(`/genomes?userId=${regularUser.sub}`);
+        const response = await adminApi.get(`/genomes?userId=${testUser.sub}`);
         expect(response.status).toBe(200);
         expect(response.data.records.length).toBeGreaterThan(0);
     });

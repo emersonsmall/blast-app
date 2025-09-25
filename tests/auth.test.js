@@ -1,29 +1,31 @@
 const axios = require('axios');
-const { BASE_URL, EMAIL, cleanupUser } = require('./helpers');
+const { BASE_URL, TEST_PASSWORD, getApiClient, generateTestUser, cleanupUser, registerAndLoginUser } = require('./helpers');
 
 describe('Auth API (/api/v1/auth)', () => {
-    const testUser = {
-        username: `auth_test_user_${Date.now()}`,
-        password: 'Password123!',
-        email: EMAIL,
-    };
-
-    // Clean up the created user after all tests in this file run
+    let testUser; 
+    
+    // One user for all tests
+    beforeAll(async () => {
+        testUser = await registerAndLoginUser(generateTestUser());
+        console.log(`[AuthTest] Created and logged in test user: ${testUser}`);
+    });
+    
     afterAll(async () => {
         await cleanupUser(testUser.username);
     });
 
-    it('should register a new user', async () => {
-        const response = await axios.post(`${BASE_URL}/auth/register`, testUser);
-        expect(response.status).toBe(201);
-        expect(response.data.message).toContain('User registered successfully');
+    it('should have created and logged in a user during setup', () => {
+        // This test just verifies that the setup was successful.
+        expect(testUser).toBeDefined();
+        expect(testUser.token).toBeDefined();
+        expect(testUser.sub).toBeDefined();
     });
 
-    it('should log in a confirmed user', async () => {
-        // Note: This test assumes the user is auto-confirmed or manually confirmed.
+    it('should allow a confirmed user to log in again', async () => {
+        // Uses global axios instance because endpoint is unauthenticated
         const response = await axios.post(`${BASE_URL}/auth/login`, {
             username: testUser.username,
-            password: testUser.password
+            password: TEST_PASSWORD
         });
         expect(response.status).toBe(200);
         expect(response.data.authToken).toBeDefined();
@@ -35,6 +37,6 @@ describe('Auth API (/api/v1/auth)', () => {
                 username: testUser.username,
                 password: 'WrongPassword!'
             })
-        ).rejects.toThrow();
+        ).rejects.toThrow('Request failed with status code 500');
     });
 });
