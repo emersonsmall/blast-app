@@ -97,7 +97,6 @@ exports.login = async (req, res) => {
     };
 
     let cognitoRes = await cognitoClient.send(new Cognito.InitiateAuthCommand(params));
-    console.log(cognitoRes);
 
     const idToken = cognitoRes.AuthenticationResult.IdToken;
 

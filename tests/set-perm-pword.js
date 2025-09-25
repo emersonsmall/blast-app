@@ -1,6 +1,6 @@
 // A one-off script to set a permanent password for a user with a temporary one.
 
-const { 
+const {
     CognitoIdentityProviderClient,
     AdminInitiateAuthCommand,
     AdminRespondToAuthChallengeCommand
@@ -33,7 +33,12 @@ const setPassword = async () => {
             },
         };
 
-        await cognitoClient.send(new AdminInitiateAuthCommand(initAuthParams));
+        const response = await cognitoClient.send(new AdminInitiateAuthCommand(initAuthParams));
+
+        if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+            console.log("[2/3] ✅ Success! Received NEW_PASSWORD_REQUIRED challenge.");
+            session = response.Session; // This is the session we need for the next step
+        }
 
     } catch (err) {
         if (err.name === 'NotAuthorizedException') {
@@ -42,15 +47,12 @@ const setPassword = async () => {
         } else if (err.name === 'PasswordResetRequiredException') {
             console.error("\n❌ ERROR: Password has already been reset. The user may already have a permanent password.");
             return;
-        } else if (err.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
-            console.log("[2/3] ✅ Success! Received NEW_PASSWORD_REQUIRED challenge.");
-            session = err.Session; // This is the session we need for the next step
         } else {
             console.error("\n❌ An unexpected error occurred:", err);
             return;
         }
     }
-    
+
     if (!session) {
         console.error("Could not retrieve a session to set a new password. The user might already be confirmed with a permanent password.");
         return;
@@ -68,7 +70,7 @@ const setPassword = async () => {
             },
             Session: session,
         };
-        
+
         const response = await cognitoClient.send(new AdminRespondToAuthChallengeCommand(respondToChallengeParams));
 
         if (response.AuthenticationResult) {

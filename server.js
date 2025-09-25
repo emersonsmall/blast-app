@@ -1,6 +1,7 @@
+const config = require("./src/config");
+
 const express = require("express");
 
-const config = require("./src/config");
 const dbInit = require("./src/config/dbInit");
 
 const authRoutes = require("./src/routes/api/v1/auth");

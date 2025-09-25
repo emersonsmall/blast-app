@@ -1,3 +1,4 @@
+require('dotenv').config();
 const axios = require('axios');
 const { CognitoIdentityProviderClient, AdminConfirmSignUpCommand } = require("@aws-sdk/client-cognito-identity-provider");
 const config = require("../src/config"); // Adjust path to your config file
@@ -14,7 +15,7 @@ const BASE_URL = 'http://localhost:3000/api/v1';
 // ------------------------------------
 const ADMIN_CREDENTIALS = {
     username: "test-admin",
-    password: "Password123!",
+    password: "Password1234!",
 };
 
 // Create a Cognito client for admin actions within the test suite
