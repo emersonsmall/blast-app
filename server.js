@@ -20,6 +20,19 @@ app.use("/api/v1/jobs", jobRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/genomes", genomeRoutes);
 
+/*
+Find out problem with test scripts/expand test scripts
+Implement SQS for statelessness
+Use parameter store                         2
+Use secrets manager                         2
+User groups DONE                            2
+Download/upload to S3 with pre-signed URLs  2
+Try MFA with cognito                        2
+Try federated identities with cognito       2
+Build docker image and push to ECR
+Pull docker image from ECR and run on EC2
+*/
+
 (async () => {
     await dbInit();
 
