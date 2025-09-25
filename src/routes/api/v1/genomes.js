@@ -3,9 +3,8 @@ const router = express.Router();
 const genomeController = require('../../../controllers/genomeController');
 const { authenticateToken, authoriseAdmin } = require('../../../middleware/authMiddleware');
 
-// All routes in this file require valid JWT and are for admins only
+// All routes in this file require valid JWT
 router.use(authenticateToken);
-router.use(authoriseAdmin);
 
 router.get('/', genomeController.getAllGenomes);
 

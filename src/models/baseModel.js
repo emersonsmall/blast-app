@@ -24,9 +24,9 @@ const mapKeysToCamelCase = (obj) => {
 };
 
 /**
- * Creates a generic model with basic CRUD and search operations for a specified table.
+ * Creates a generic model with CRUD and search operations for a specified table.
  * @param {string} tableName    The name of the database table.
- * @returns {object}            An object containing basic CRUD and search methods.
+ * @returns {object}            An object containing CRUD and search methods.
  */
 const createBaseModel = (tableName, options = {}) => {
     const { allowedSortBy = ["id"], defaultSortBy = allowedSortBy[0] } = options;

@@ -14,24 +14,17 @@ router.use(authenticateToken, authoriseAdmin);
 router.get("/", userController.getAllUsers);
 
 /**
- * @route GET /api/v1/users/:username
+ * @route GET /api/v1/users/:id
  * @desc Get user from Cognito by username 
  * @access Private (admin only)
  */
-router.get("/:username", userController.getUserByUsername);
+router.get("/:id", userController.getUserById);
 
 /**
- * @route DELETE /api/v1/users/:username
+ * @route DELETE /api/v1/users/:id
  * @desc Delete user from Cognito by username
  * @access Private (admin only)
  */
-router.delete("/:username", userController.deleteUserByUsername);
-
-/**
- * @route GET /api/v1/users/:username/genomes
- * @desc Get all unique genomes associated with a user
- * @access Private
- */
-router.get("/:username/genomes", userController.getAllGenomesForUser);
+router.delete("/:id", userController.deleteUserById);
 
 module.exports = router;

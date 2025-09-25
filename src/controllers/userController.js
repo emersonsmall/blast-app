@@ -4,17 +4,33 @@ const config = require("../config");
 
 const cognitoClient = new Cognito.CognitoIdentityProviderClient({ region: config.aws.region });
 
-// Helper to format user data from Cognito
+// --- Helpers ---
 const formatCognitoUser = (cognitoUser) => {
-    return {
+    const user = {
         username: cognitoUser.Username,
-        sub: cognitoUser.sub,
-        email: cognitoUser.email,
         status: cognitoUser.UserStatus,
         createdAt: cognitoUser.UserCreateDate,
         lastModifiedAt: cognitoUser.UserLastModifiedDate,
-        isAdmin: cognitoUser["cognito:groups"]?.includes("Admins") || false
-    }
+        id: null,
+        email: null,
+    };
+
+    cognitoUser.Attributes.forEach(attr => {
+        if (attr.Name === "sub") user.id = attr.Value;
+        if (attr.Name === "email") user.email = attr.Value;
+    });
+    return user;
+};
+
+async function getUserBySub(sub) {
+    const params = {
+        UserPoolId: config.aws.cognito.userPoolId,
+        Filter: `sub = "${sub}"`,
+        Limit: 1
+    };
+    const command = new Cognito.ListUsersCommand(params);
+    const { Users } = await cognitoClient.send(command);
+    return (Users && Users.length) ? formatCognitoUser(Users[0]) : null;
 };
 
 /**
@@ -24,11 +40,7 @@ const formatCognitoUser = (cognitoUser) => {
  */
 exports.getAllUsers = async (req, res) => {
     try {
-        const params = {
-            UserPoolId: config.aws.cognito.userPoolId,
-            Limit: 60 // Adjust as needed, max is 60
-        };
-
+        const params = { UserPoolId: config.aws.cognito.userPoolId };
         const command = new Cognito.ListUsersCommand(params);
         const { Users } = await cognitoClient.send(command);
 
@@ -43,35 +55,21 @@ exports.getAllUsers = async (req, res) => {
 
 /**
  * @route GET /api/v1/users/:id
- * @desc Retrieves a user by ID
+ * @desc Retrieves a user by their Cognito 'sub' ID
  * @access Private (admin only or the user themselves)
  */
-exports.getUserByUsername = async (req, res) => {
+exports.getUserById = async (req, res) => {
     try {
-        const params = {
-            UserPoolId: config.aws.cognito.userPoolId,
-            Username: req.params.username
-        };
+        const userId = req.params.id;
+        const user = await getUserBySub(userId);
 
-        const command = new Cognito.AdminGetUserCommand(params);
-        const cognitoUser = await cognitoClient.send(command);
-
-        const formattedUser = {
-            username: cognitoUser.Username,
-            sub: cognitoUser.UserAttributes.find(attr => attr.Name === "sub")?.Value,
-            email: cognitoUser.UserAttributes.find(attr => attr.Name === "email")?.Value,
-            status: cognitoUser.UserStatus,
-            createdAt: cognitoUser.UserCreateDate,
-            lastModifiedAt: cognitoUser.UserLastModifiedDate,
-            isAdmin: cognitoUser.UserAttributes.find(attr => attr.Name === "cognito:groups")?.Value?.includes("Admins") || false
-        };
-
-        res.status(200).json(formattedUser);
-    } catch (err) {
-        console.error("Error fetching user:", err);
-        if (err.name === "UserNotFoundException") {
+        if (!user) {
             return res.status(404).json({ error: "User not found." });
         }
+
+        res.status(200).json(user);
+    } catch (err) {
+        console.error("Error fetching user:", err);
         res.status(500).json({ error: "Failed to fetch user." });
     }
 };
@@ -81,49 +79,25 @@ exports.getUserByUsername = async (req, res) => {
  * @desc Deletes a user
  * @access Private (admin only)
  */
-exports.deleteUserByUsername = async (req, res) => {
+exports.deleteUserById = async (req, res) => {
     try {
+        const userId = req.params.id;
+        const user = await getUserBySub(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
         const params = {
             UserPoolId: config.aws.cognito.userPoolId,
-            Username: req.params.username
-        }
+            Username: user.username
+        };
         const command = new Cognito.AdminDeleteUserCommand(params);
         await cognitoClient.send(command);
+
         res.status(204).send()
     } catch (err) {
         console.error("Error deleting user:", err);
-        if (err.name === "UserNotFoundException") {
-            return res.status(404).json({ error: "User not found." });
-        }
         res.status(500).json({ error: "Failed to delete user." });
-    }
-};
-
-/**
- * @route GET /api/v1/users/:id/genomes
- * @desc Get all unique genomes associated with a specific user
- * @access Private (Admin or the user themselves)
- */
-exports.getAllGenomesForUser = async (req, res) => {
-    try {
-        const requestedUserId = parseInt(req.params.id);
-        const authenticatedUser = req.user;
-
-        // Allow access if the authenticated user is an admin or is requesting their own genomes
-        if (!authenticatedUser.isAdmin && authenticatedUser.id !== requestedUserId) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-
-        const { sortBy, sortOrder, page, limit } = req.query;
-        const queryOptions = {
-            pagination: { page, limit },
-            sorting: { sortBy, sortOrder }
-        };
-
-        const result = await genomeModel.getUniqueGenomesByUserId(requestedUserId, queryOptions);
-        res.status(200).json(result);
-    } catch (err) {
-        console.error("Error fetching genomes:", err);
-        res.status(500).json({ error: "Error fetching genomes" });
     }
 };
