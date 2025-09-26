@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { BASE_URL, TEST_PASSWORD, getApiClient, generateTestUser, cleanupUser, registerAndLoginUser } = require('./helpers');
+const { BASE_URL, TEST_PASSWORD, generateTestUser, cleanupUser, registerAndLoginUser } = require('./helpers');
 
 describe('Auth API (/api/v1/auth)', () => {
     let testUser; 

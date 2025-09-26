@@ -1,3 +1,5 @@
+const { config } = require("../src/config");
+
 const axios = require('axios');
 const {
     CognitoIdentityProviderClient,
@@ -6,7 +8,6 @@ const {
     AdminDeleteUserCommand
 } = require("@aws-sdk/client-cognito-identity-provider");
 const { generateSecretHash } = require("../src/controllers/authController");
-const config = require("../src/config");
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 const TEST_PASSWORD = 'Password123!';
@@ -16,6 +17,7 @@ const ADMIN_CREDENTIALS = {
 };
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: config.aws.region });
+
 
 const getApiClient = (token) => {
     return axios.create({

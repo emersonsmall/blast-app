@@ -1,5 +1,5 @@
 const { S3Client } = require("@aws-sdk/client-s3");
-const config = require("./index");
+const { config } = require("./index");
 
 const s3 = new S3Client({
   region: config.aws.region,

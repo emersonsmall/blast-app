@@ -4,7 +4,7 @@ const {
 } = require("aws-jwt-verify");
 
 // Internal modules
-const config = require("../config");
+const { config } = require("../config");
 
 
 const verifier = CognitoJwtVerifier.create({
