@@ -98,10 +98,8 @@ exports.login = async (req, res) => {
 
     let cognitoRes = await cognitoClient.send(new Cognito.InitiateAuthCommand(params));
 
-    const idToken = cognitoRes.AuthenticationResult.IdToken;
-
     res.status(200).json({
-      authToken: idToken,
+      authToken: cognitoRes.AuthenticationResult.IdToken
     });
 
   } catch (err) {

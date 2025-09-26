@@ -1,4 +1,10 @@
-const { getApiClient, registerAndLoginUser, cleanupUser, generateTestUser } = require('./helpers');
+const { 
+    getApiClient, 
+    registerAndLoginUser, 
+    cleanupUser, 
+    generateTestUser,
+    sleep
+} = require('./helpers');
 
 describe('Jobs API (/api/v1/jobs)', () => {
     let userApi;
@@ -25,7 +31,7 @@ describe('Jobs API (/api/v1/jobs)', () => {
 
     it('should list the jobs for the authenticated user', async () => {
         // Allow a moment for the job to be inserted into the DB
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await sleep(1000);
         
         const response = await userApi.get('/jobs');
         expect(response.status).toBe(200);
@@ -53,7 +59,7 @@ describe('Jobs API (/api/v1/jobs)', () => {
             if (jobStatus === 'failed') {
                 throw new Error('Job failed to complete.');
             }
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
+            await sleep(5000); // Poll every 5 seconds
         }
 
         const resultResponse = await userApi.get(`/jobs/${createdJobId}/result`);

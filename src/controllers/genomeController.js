@@ -15,11 +15,6 @@ exports.getAllGenomes = async (req, res) => {
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        // If no userId is provided, only admins can access all genomes
-        if (!userId && !authenticatedUser.isAdmin) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-
         const { sortBy, sortOrder, page, limit, ...filters } = req.query;
 
         const queryOptions = {
@@ -31,6 +26,8 @@ exports.getAllGenomes = async (req, res) => {
         let result;
         if (userId) {
             result = await genomeModel.getUniqueGenomesByUserId(userId, queryOptions);
+        } else if (!authenticatedUser.isAdmin) {
+            result = await genomeModel.getUniqueGenomesByUserId(authenticatedUser.id, queryOptions);
         } else {
             result = await genomeModel.find(queryOptions);
         }

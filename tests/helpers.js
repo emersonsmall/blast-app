@@ -99,9 +99,7 @@ const cleanupUser = async (username) => {
         console.log(`[HELPER] cleanupUser(): Successfully deleted user '${username}'.`);
     } catch (error) {
         if (error.name !== 'UserNotFoundException') {
-            console.warn(`[HELPER] cleanupUser(): Warning: Failed to clean up user ${username}.`, error);
-        } else {
-            console.log(`[HELPER] cleanupUser(): User '${username}' not found, likely already deleted.`);
+            console.warn(`[HELPER] cleanupUser(): Failed to clean up user '${username}'.`);
         }
     }
 };

@@ -29,7 +29,7 @@ describe('Genomes API (/api/v1/genomes)', () => {
 
         // Wait for the job to be processed so genomes are in the DB
         console.log('Waiting for job to be processed to populate genomes...');
-        sleep(15000);
+        await sleep(15000);
     });
 
     afterAll(async () => {
@@ -37,8 +37,8 @@ describe('Genomes API (/api/v1/genomes)', () => {
         await cleanupUser(testUser.username);
     });
 
-    it('should allow a user to get their own genomes using a userId filter', async () => {
-        const response = await userApi.get(`/genomes?userId=${testUser.sub}`);
+    it('should allow a user to get their own genomes', async () => {
+        const response = await userApi.get(`/genomes`);
         expect(response.status).toBe(200);
         expect(response.data.records.length).toBeGreaterThan(0);
         expect(response.data.records[0].organismName).toBeDefined();
