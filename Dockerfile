@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y \
     ncbi-blast+ \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /py/packages
-
+    
 # Install Python packages
+RUN mkdir -p /py/packages
 COPY scripts/requirements.txt ./scripts/requirements.txt
 RUN pip3 install -r ./scripts/requirements.txt --break-system-packages --target /py/packages
 
@@ -38,4 +38,5 @@ COPY . .
 
 EXPOSE 3000
 
+# Default command to start the API server
 CMD [ "node", "server.js" ]

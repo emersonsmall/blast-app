@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "jest --testTimeout=90000 --detectOpenHandles"
+    "test": "jest --testTimeout=90000 --detectOpenHandles --setupFiles ./tests/setup.js"
   },
   "keywords": [],
   "author": "",

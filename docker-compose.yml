@@ -1,0 +1,19 @@
+services:
+  # The API Server Service
+  server:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # This service uses the default CMD from the Dockerfile: ["node", "server.js"]
+
+  # The Background Worker Service
+  worker:
+    build: .
+    env_file:
+      - .env
+    restart: unless-stopped
+    # This overrides the Dockerfile's default CMD to start the worker script instead.
+    command: [ "node", "worker.js" ]
