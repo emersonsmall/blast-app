@@ -4,6 +4,11 @@ tests/
 
 data/
 
+venv/
+
+A2_response_to_criteria.md
+drop_tables.js
+
 .env
 
 Dockerfile
