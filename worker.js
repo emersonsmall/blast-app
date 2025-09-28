@@ -141,7 +141,7 @@ function runBlast(queryGenome, targetGenome, jobId) {
             jobId.toString()
         ];
 
-        const pythonProcess = spawn("python", args, { cwd: "scripts" });
+        const pythonProcess = spawn("python3", args, { cwd: "scripts" });
 
         let result = '';
         let error = '';

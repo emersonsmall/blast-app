@@ -1,10 +1,8 @@
 node_modules/
+data/
+venv/
 
 tests/
-
-data/
-
-venv/
 
 A2_response_to_criteria.md
 drop_tables.js
