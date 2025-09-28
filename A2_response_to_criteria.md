@@ -57,10 +57,10 @@ Overview
 
 ### S3 Pre-signed URLs
 
-- **S3 Bucket names:**
+- **S3 Bucket names:** n10763139-bucket
 - **Video timestamp:**
 - **Relevant files:**
-    -
+    src/config/s3.js
 
 ### In-memory cache
 
@@ -89,7 +89,7 @@ Overview
 
 ### Core - Authentication with Cognito
 
-- **User pool name:**
+- **User pool name:** n10763139-pool
 - **How are authentication tokens handled by the client?:** [eg. Response to login request sets a cookie containing the token.]
 - **Video timestamp:**
 - **Relevant files:**
@@ -111,7 +111,8 @@ Overview
 
 ### Cognito groups
 
-- **How are groups used to set permissions?:** [eg. 'admin' users can delete and ban other users]
+- **How are groups used to set permissions?:** 'Admins' user group changes data returned from various endpoints. 
+I.e., if admin, /genomes returns all genomes, but if regular user it only returns the genomes for the logged in user.
 - **Video timestamp:**
 - **Relevant files:**
     -
@@ -126,14 +127,14 @@ Overview
 - **Parameter names:** [eg. n1234567/base_url]
 - **Video timestamp:**
 - **Relevant files:**
-    -
+    src/config/index.js
 
 ### Secrets manager
 
 - **Secrets names:** [eg. n1234567-youtube-api-key]
 - **Video timestamp:**
 - **Relevant files:**
-    -
+    src/config/index.js
 
 ### Infrastructure as code
 

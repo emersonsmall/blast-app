@@ -5,18 +5,6 @@ const express = require("express");
 
 const app = express();
 
-/*
-User groups DONE                            2
-Use parameter store    DONE                     2
-Use secrets manager        DONE                 2
-
-Download/upload to S3 with pre-signed URLs  2
-
-Expand test scripts
-Build docker image and push to ECR
-Pull docker image from ECR and run on EC2
-*/
-
 const startServer = async () => {
     try {
         await loadConfig();
