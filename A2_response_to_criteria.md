@@ -17,7 +17,10 @@ Overview
 - **Student number:** n10763139
 - **Partner name (if applicable):** N/A
 - **Application name:** BLAST App
-- **Two line description:** 
+- **Two line description:** Takes the names of two organisms, retrieves
+the relevant FASTA (sequence content) and GFF (genome annotation) files using the
+GenBank API, and runs an all-vs-all BLAST (Basic Local Alignment Search Tool) search 
+to find the most similar gene of the two given species.
 - **EC2 instance name or ID:** i-024995c870c0644de
 
 ------------------------------------------------
@@ -27,11 +30,12 @@ Overview
 - **AWS service name:** S3
 - **What data is being stored?:** Genome files (.GFF and .FASTA)
 - **Why is this service suited to this data?:** Files are best suited to blob storage as they do not need to be query-able and are very large.
-- **Why is are the other services used not suitable for this data?:** SQL and NoSQL services can't support files of this size.
+- **Why is are the other services used not suitable for this data?:** Structured data services can't support files of this size.
 - **Bucket name:** n10763139-bucket
-- **Video timestamp:** 
+- **Video timestamp:** 0:01
 - **Relevant files:**
     src/config/s3.js
+    worker.js
 
 ### Core - Second data persistence service
 
@@ -40,27 +44,29 @@ Overview
 - **Why is this service suited to this data?:** The data stored is structured and must be query-able.
 - **Why is are the other services used not suitable for this data?:** A NoSQL option could have been used, but blob storage is unsuitable as it is not query-able.
 - **Table names:** genomes, job_results, jobs
-- **Video timestamp:**
+- **Video timestamp:** 0:50
 - **Relevant files:**
     src/config/db.js
 
 ### Third data service
 
-- **AWS service name:** N/A
-- **What data is being stored?:**
-- **Why is this service suited to this data?:**
-- **Why is are the other services used not suitable for this data?:**
-- **Bucket/instance/table name:**
-- **Video timestamp:**
+- **AWS service name:** SQS
+- **What data is being stored?:** Job info to be processed by worker container.
+- **Why is this service suited to this data?:** Used to pass messages between different services.
+- **Why is are the other services used not suitable for this data?:** SQS provides redundancy mechanisms (message added back to queue if worker fails)
+- **Instance name:** n10763139-queue
+- **Video timestamp:** 1:18
 - **Relevant files:**
-    -
+    worker.js
+    src/services/jobService
 
 ### S3 Pre-signed URLs
 
 - **S3 Bucket names:** n10763139-bucket
-- **Video timestamp:**
+- **Video timestamp:** 1:50
 - **Relevant files:**
     src/config/s3.js
+    src/controllers/genomeController
 
 ### In-memory cache
 
@@ -92,7 +98,7 @@ Overview
 
 - **User pool name:** n10763139-pool
 - **How are authentication tokens handled by the client?:** A JWT is provided in the response payload.
-- **Video timestamp:**
+- **Video timestamp:** 3:04
 - **Relevant files:**
     /src/middleware/authMiddleware
     /src/routes/auth
@@ -118,7 +124,7 @@ Overview
 - **How are groups used to set permissions?:** 'Admins' user group changes data returned from various endpoints. 
 I.e., if admin, /genomes returns all genomes, but if regular user it only returns the genomes for the logged in user.
 isAdmin property added to user object by line 30 of authMiddleware.
-- **Video timestamp:**
+- **Video timestamp:** 4:12
 - **Relevant files:**
     /src/middleware/authMiddleware
     /src/controllers/genomeController
@@ -126,7 +132,7 @@ isAdmin property added to user object by line 30 of authMiddleware.
 ### Core - DNS with Route53
 
 - **Subdomain**:  n10763139.cab432.com
-- **Video timestamp:**
+- **Video timestamp:** 5:36
 
 ### Parameter store
 
@@ -142,7 +148,7 @@ isAdmin property added to user object by line 30 of authMiddleware.
 /n10763139/db/user
 /n10763139/genbankApiBaseUrl
 /n10763139/port
-- **Video timestamp:**
+- **Video timestamp:** 6:20
 - **Relevant files:**
     src/config/index.js
 
@@ -156,7 +162,7 @@ DB_PASSWORD
 COGNITO_CLIENT_SECRET
 GENBANK_API_KEY
 JWT_SECRET
-- **Video timestamp:**
+- **Video timestamp:** 6:48
 - **Relevant files:**
     src/config/index.js
 
