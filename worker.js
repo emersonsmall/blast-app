@@ -3,7 +3,7 @@ const { loadConfig, config } = require("./src/config");
 const jobModel = require("./src/models/jobModel");
 const resultModel = require("./src/models/resultModel");
 const genomeModel = require("./src/models/genomeModel");
-const s3  = require("./src/config/s3");
+const { getS3Client, s3ObjectExists, uploadFileToS3 }  = require("./src/config/s3");
 
 const https = require("https");
 const fs = require("fs");
@@ -13,7 +13,7 @@ const unzipper = require("unzipper");
 const { spawn } = require("child_process");
 const os = require("os");
 
-const { PutObjectCommand, HeadObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { GetObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
 const { dbInit } = require("./src/config/db");
@@ -22,8 +22,8 @@ const { dbInit } = require("./src/config/db");
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 let sqsClient;
+let s3Client;
 
-// TODO: handle case where taxon returns multiple reference genomes
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
 
 async function processBlastJob(job) {
@@ -121,10 +121,10 @@ async function getGenome(taxon, jobId) {
     }
 
     const fastaCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: fastaKey });
-    const fastaUrl = await getSignedUrl(s3, fastaCmd, { expiresIn: 3600 });
+    const fastaUrl = await getSignedUrl(s3Client, fastaCmd, { expiresIn: 3600 });
 
     const gffCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: gffKey });
-    const gffUrl = await getSignedUrl(s3, gffCmd, { expiresIn: 3600 });
+    const gffUrl = await getSignedUrl(s3Client, gffCmd, { expiresIn: 3600 });
 
     return { fastaUrl, gffUrl, accession };
 }
@@ -180,35 +180,6 @@ async function findFileByExt(dir, ext) {
         console.error(`Error reading directory ${dir}: ${err.message}`);
         return null;
     }
-}
-
-/**
- * Checks if an object exists in S3.
- */
-async function s3ObjectExists(bucket, key) {
-    try {
-        const command = new HeadObjectCommand({ Bucket: bucket, Key: key });
-        await s3.send(command);
-        return true;
-    } catch (err) {
-        if (err.name === 'NotFound') {
-            return false;
-        }
-        throw err;
-    }
-}
-
-/**
- * Uploads a file to S3 from the given file path.
- */
-async function uploadFileToS3(bucket, key, filePath) {
-    const fileStream = fs.createReadStream(filePath);
-    const command = new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: fileStream
-    });
-    return s3.send(command);
 }
 
 /**
@@ -323,8 +294,10 @@ const startWorker = async () => {
         await loadConfig();
         await dbInit();
 
+
         sqsClient = new SQSClient({ region: config.aws.region });
-        
+        s3Client = getS3Client();
+
         pollQueue();
     } catch (err) {
         console.error("FATAL: Failed to start worker", err);

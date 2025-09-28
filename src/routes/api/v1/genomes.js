@@ -8,4 +8,6 @@ router.use(authenticateToken);
 
 router.get('/', genomeController.getAllGenomes);
 
+router.get('/:id', genomeController.getGenomeById);
+
 module.exports = router;
