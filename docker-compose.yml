@@ -3,17 +3,13 @@ services:
   server:
     image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n10763139-a2-repo:latest
     ports:
-      - "${PORT}:${PORT}"
-    env_file:
-      - .env
+      - "3000:3000"
     restart: unless-stopped
     # This service uses the default CMD from the Dockerfile: ["node", "server.js"]
 
   # The Background Worker Service
   worker:
     image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n10763139-a2-repo:latest
-    env_file:
-      - .env
     restart: unless-stopped
     # This overrides the Dockerfile's default CMD to start the worker script instead.
     command: [ "node", "worker.js" ]
