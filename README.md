@@ -7,8 +7,6 @@
 
 # BLAST App
 
-## About The Project
-
 This application allows users to perform a BLAST (Basic Local Alignment Search Tool) search between two organisms. It retrieves the necessary FASTA (sequence) and GFF (genome annotation) files from the GenBank API and runs an all-versus-all BLAST search to identify the most similar gene between the two species.
 
 ## Architecture
