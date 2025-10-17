@@ -11,7 +11,7 @@ This application allows users to perform a BLAST (Basic Local Alignment Search T
 
 ## Architecture
 
-The application is containerized and consists of two services, a server and a worker, as defined in `docker-compose.yml`.
+The application is containerised and consists of two services, a server and a worker, as defined in `docker-compose.yml`.
 
   * **Server**: An Express.js application that provides the API endpoints.
   * **Worker**: A Node.js application that processes the BLAST jobs asynchronously.
