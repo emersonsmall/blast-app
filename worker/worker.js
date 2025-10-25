@@ -1,9 +1,9 @@
-const { loadConfig, config } = require("./src/config");
+const { loadConfig, config } = require("../src/config");
 
-const jobModel = require("./src/models/jobModel");
-const resultModel = require("./src/models/resultModel");
-const genomeModel = require("./src/models/genomeModel");
-const { getS3Client, s3ObjectExists, uploadFileToS3 }  = require("./src/config/s3");
+const jobModel = require("../src/models/jobModel");
+const resultModel = require("../src/models/resultModel");
+const genomeModel = require("../src/models/genomeModel");
+const { getS3Client, s3ObjectExists, uploadFileToS3 }  = require("../src/config/s3");
 
 const https = require("https");
 const fs = require("fs");
@@ -16,7 +16,7 @@ const os = require("os");
 const { GetObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
-const { dbInit } = require("./src/config/db");
+const { dbInit } = require("../src/config/db");
 
 
 const POSTGRES_UNIQUE_VIOLATION = '23505';
@@ -141,7 +141,7 @@ function runBlast(queryGenome, targetGenome, jobId) {
             jobId.toString()
         ];
 
-        const pythonProcess = spawn("python3", args, { cwd: "scripts" });
+        const pythonProcess = spawn("python3", args);
 
         let result = '';
         let error = '';

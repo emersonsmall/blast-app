@@ -7,7 +7,7 @@ const pool = new Pool({
     user: config.db.user,
     password: config.db.password,
     database: config.db.name,
-    ssl: { rejectUnauthorized: false } // For AWS RDS
+    ssl: { rejectUnauthorized: false }
 });
 
 const dropTables = async () => {
@@ -29,11 +29,11 @@ const dropTables = async () => {
         await client.query('DROP TYPE IF EXISTS job_status;');
         
         await client.query('COMMIT');
-        console.log('\n✅ All specified tables and types have been successfully dropped.');
+        console.log('\nAll specified tables and types have been successfully dropped.');
 
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('\n❌ Error dropping tables:', err);
+        console.error('\nError dropping tables:', err);
     } finally {
         client.release();
         pool.end();
