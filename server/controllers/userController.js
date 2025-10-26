@@ -1,6 +1,6 @@
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
 
-const { config } = require("../config");
+const { config } = require("../../src/config");
 
 const cognitoClient = new Cognito.CognitoIdentityProviderClient({ region: config.aws.region });
 

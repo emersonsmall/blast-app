@@ -17,7 +17,6 @@ const PARAMETER_NAMES = [
     `${ROOT_PATH}db/port`,
     `${ROOT_PATH}db/user`,
     `${ROOT_PATH}db/name`,
-    `${ROOT_PATH}aws/region`,
     `${ROOT_PATH}aws/sqsQueueUrl`,
     `${ROOT_PATH}aws/s3BucketName`,
     `${ROOT_PATH}aws/cognito/userPoolId`,
