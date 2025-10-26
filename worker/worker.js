@@ -258,7 +258,7 @@ const pollQueue = async () => {
             const receiveCommand = new ReceiveMessageCommand({
                 QueueUrl: config.aws.sqsQueueUrl,
                 MaxNumberOfMessages: 1,
-                WaitTimeSeconds: 20, // long polling
+                WaitTimeSeconds: 5,
             });
 
             const { Messages } = await sqsClient.send(receiveCommand);

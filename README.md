@@ -1,7 +1,6 @@
 # Incomplete
 
   * **TODO**: Check if a job already exists / if results are already available for a user and taxon pair before creating a new job (handle multiple requests submitted in quick succession gracefully).
-  * **TODO**: Split the worker and server into separate Docker images.
   * **TODO**: Configure horizontal scaling using AWS load balancer and auto scaling groups.
   * **TODO**: Expand test suite.
 
