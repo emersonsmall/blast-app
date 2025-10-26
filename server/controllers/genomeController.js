@@ -1,9 +1,9 @@
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { GetObjectCommand } = require("@aws-sdk/client-s3");
 
-const { config } = require("../config");
-const { getS3Client } = require("../config/s3");
-const genomeModel = require("../models/genomeModel");
+const { config } = require("../../src/config");
+const { getS3Client } = require("../../src/config/s3");
+const genomeModel = require("../../src/models/genomeModel");
 
 /**
  * @route GET /api/v1/genomes

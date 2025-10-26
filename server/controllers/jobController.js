@@ -1,6 +1,6 @@
 const jobService = require("../services/jobService");
-const jobModel = require("../models/jobModel");
-const resultModel = require("../models/resultModel");
+const jobModel = require("../../src/models/jobModel");
+const resultModel = require("../../src/models/resultModel");
 
 /**
  * @route   POST /api/v1/jobs

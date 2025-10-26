@@ -10,7 +10,7 @@ RUN npm install
 COPY src ./src
 
 # Copy server-specific files
-COPY server/server.js ./server/server.js
+COPY server ./server
 
 EXPOSE 3000
 
