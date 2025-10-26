@@ -17,16 +17,16 @@ The application is containerised and consists of two services, a server and a wo
 
 ### AWS Services
 
-The application is designed to run on AWS and leverages several of their services:
+The application is designed to run on AWS and uses several services:
 
-  * **Amazon S3**: Used for storing genome files (.GFF and .FASTA).
-  * **Amazon RDS**: A PostgreSQL database for storing genome and BLAST job metadata.
-  * **Amazon SQS**: A message queue for passing job information from the server to the worker containers.
-  * **Amazon Cognito**: For user authentication and management.
-  * **Amazon Route53**: For DNS management.
-  * **AWS Systems Manager Parameter Store**: For storing configuration parameters.
-  * **AWS Secrets Manager**: For storing secrets (database password, API key etc).
-  * **Amazon ECR**: For storing and managing Docker images.
+  * **Amazon S3**: Storing genome files (.GFF and .FASTA).
+  * **Amazon RDS**: Database for storing genome and BLAST job metadata.
+  * **Amazon SQS**: Message queue for passing job information from the server to the worker.
+  * **Amazon Cognito**: User authentication and management.
+  * **Amazon Route53**: DNS management.
+  * **AWS Systems Manager Parameter Store**: Storing configuration parameters.
+  * **AWS Secrets Manager**: Storing secrets (database password, API key etc).
+  * **Amazon ECR**: Storing and managing Docker images.
 
 ## Features
 
@@ -80,7 +80,7 @@ The API supports sorting, pagination, and filtering on the `/jobs` and `/genomes
 
   * Docker and Docker Compose
   * Node.js and npm
-  * An AWS account with the required services configured.
+  * An AWS account with the required services configured
 
 ### Installation
 
