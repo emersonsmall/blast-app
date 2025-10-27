@@ -132,7 +132,7 @@ async function getGenome(taxon, jobId) {
 function runBlast(queryGenome, targetGenome, jobId) {
     return new Promise((resolve, reject) => {
         const args = [
-            "blast_workflow.py",
+            "worker/blast_workflow.py",
             queryGenome.fastaUrl,
             queryGenome.gffUrl,
             targetGenome.fastaUrl,
@@ -292,7 +292,6 @@ const startWorker = async () => {
     try {
         await loadConfig();
         await dbInit();
-
 
         sqsClient = new SQSClient({ region: config.aws.region });
         s3Client = getS3Client();
