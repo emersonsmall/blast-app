@@ -1,8 +1,3 @@
-# Incomplete
-
-  * **TODO**: Check if a job already exists / if results are already available for a user and taxon pair before creating a new job (handle multiple requests submitted in quick succession gracefully).
-  * **TODO**: Expand test suite.
-
 # BLAST App
 
 This application allows users to perform a BLAST search between two organisms. It retrieves the necessary FASTA and GFF files from the NCBI Datasets API and runs an all-vs-all BLAST search to identify the most similar gene between the two species.
@@ -18,14 +13,14 @@ The application is containerised and consists of a server and a worker, as defin
 
 The application is designed to run on AWS and utilises serveral services:
 
-  * **Amazon S3**: Stores genome files (.GFF and .FASTA).
-  * **Amazon RDS**: Stores genome and BLAST job metadata.
-  * **Amazon SQS**: Passes job information from the server to the worker.
-  * **Amazon Route53**
-  * **AWS Parameter Store**
-  * **AWS Secrets Manager**
-  * **Amazon ECR**
-  * **Amazon Cognito**
+  * **S3**: Stores genome files (.GFF and .FASTA).
+  * **RDS**: Stores genome and BLAST job metadata.
+  * **SQS**: Passes job information from the server to the worker.
+  * **ECS**
+  * **Route53**
+  * **Parameter Store**
+  * **Secrets Manager**
+  * **Cognito**
 
 ## Features
 
@@ -89,10 +84,7 @@ The API supports sorting, pagination, and filtering on the `/jobs` and `/genomes
     npm install
     ```
 3.  Set up the required AWS services, including configuration variables in AWS Parameter Store.
-4.  Build and run the Docker containers:
-    ```bash
-    docker-compose up --build
-    ```
+4.  Build and run the Docker containers (locally or via ECS).
 
 ## API Endpoint Tests
 
