@@ -28,12 +28,12 @@ let s3Client;
 async function processBlastJob(job) {
     try {
         console.log(`Job ${job.id}: Getting genome data`);
-        jobModel.updateById(job.id, { status: "getting_genomes" });
+        await jobModel.updateById(job.id, { status: "getting_genomes" });
         const queryGenome = await getGenome(job.queryTaxon, job.id);
         const targetGenome = await getGenome(job.targetTaxon, job.id);
 
         console.log(`Job ${job.id}: Running BLAST`);
-        jobModel.updateById(job.id, { 
+        await jobModel.updateById(job.id, { 
             status: "running_blast",
             query_accession: queryGenome.accession, 
             target_accession: targetGenome.accession

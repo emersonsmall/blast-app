@@ -1,5 +1,4 @@
-# Build environment with necessary dependencies
-FROM node:latest AS builder
+FROM node:25-slim AS builder
 
 # Create app directory
 WORKDIR /app
@@ -14,23 +13,16 @@ RUN apt-get update && apt-get install -y \
 # Install Python packages
 RUN mkdir -p /py/packages
 COPY worker/requirements.txt ./requirements.txt
-RUN pip3 install -r ./requirements.txt --break-system-packages --target /py/packages
-
-# Build final Node.js application
-FROM node:latest
-
-WORKDIR /app
+RUN pip3 install --no-cache-dir -r ./requirements.txt --break-system-packages --target /py/packages \
+    && apt-get purge -y python3-pip \
+    && apt-get autoremove -y \
+    && rm -rf /root/.cache
 
 ENV PYTHONPATH=/py/packages
 
-# Copy Python packages, system dependencies, and Python from builder
-COPY --from=builder /usr/bin/ /usr/bin/
-COPY --from=builder /usr/lib/ /usr/lib/
-COPY --from=builder /py/packages /py/packages
-
 # Install Node.js dependencies
 COPY worker/package*.json ./
-RUN npm install
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy shared source code
 COPY src ./src

@@ -1,10 +1,10 @@
-FROM node:latest
+FROM node:25-slim
 
 WORKDIR /app
 
 # Install Node.js dependencies
 COPY server/package*.json ./
-RUN npm install
+RUN npm install --omit=dev
 
 # Copy shared source code
 COPY src ./src
