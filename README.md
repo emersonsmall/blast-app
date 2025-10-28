@@ -1,32 +1,31 @@
 # Incomplete
 
   * **TODO**: Check if a job already exists / if results are already available for a user and taxon pair before creating a new job (handle multiple requests submitted in quick succession gracefully).
-  * **TODO**: Configure horizontal scaling using AWS load balancer and auto scaling groups.
   * **TODO**: Expand test suite.
 
 # BLAST App
 
-This application allows users to perform a BLAST (Basic Local Alignment Search Tool) search between two organisms. It retrieves the necessary FASTA (sequence) and GFF (genome annotation) files from the GenBank API and runs an all-versus-all BLAST search to identify the most similar gene between the two species.
+This application allows users to perform a BLAST search between two organisms. It retrieves the necessary FASTA and GFF files from the NCBI Datasets API and runs an all-vs-all BLAST search to identify the most similar gene between the two species.
 
 ## Architecture
 
-The application is containerised and consists of two services, a server and a worker, as defined in `docker-compose.yml`.
+The application is containerised and consists of a server and a worker, as defined in `docker-compose.yml`.
 
   * **Server**: An Express.js application that provides the API endpoints.
-  * **Worker**: A Node.js application that processes the BLAST jobs asynchronously.
+  * **Worker**: A Node.js application that processes BLAST jobs asynchronously via a Python script.
 
 ### AWS Services
 
-The application is designed to run on AWS and uses several services:
+The application is designed to run on AWS and utilises serveral services:
 
-  * **Amazon S3**: Storing genome files (.GFF and .FASTA).
-  * **Amazon RDS**: Database for storing genome and BLAST job metadata.
-  * **Amazon SQS**: Message queue for passing job information from the server to the worker.
-  * **Amazon Cognito**: User authentication and management.
-  * **Amazon Route53**: DNS management.
-  * **AWS Systems Manager Parameter Store**: Storing configuration parameters.
-  * **AWS Secrets Manager**: Storing secrets (database password, API key etc).
-  * **Amazon ECR**: Storing and managing Docker images.
+  * **Amazon S3**: Stores genome files (.GFF and .FASTA).
+  * **Amazon RDS**: Stores genome and BLAST job metadata.
+  * **Amazon SQS**: Passes job information from the server to the worker.
+  * **Amazon Route53**
+  * **AWS Parameter Store**
+  * **AWS Secrets Manager**
+  * **Amazon ECR**
+  * **Amazon Cognito**
 
 ## Features
 
@@ -89,7 +88,7 @@ The API supports sorting, pagination, and filtering on the `/jobs` and `/genomes
     ```bash
     npm install
     ```
-3.  Set up the required AWS services and create a `.env` file with your AWS credentials and other configuration variables.
+3.  Set up the required AWS services, including configuration variables in AWS Parameter Store.
 4.  Build and run the Docker containers:
     ```bash
     docker-compose up --build
@@ -97,7 +96,7 @@ The API supports sorting, pagination, and filtering on the `/jobs` and `/genomes
 
 ## API Endpoint Tests
 
-The application includes API endpoint tests using Jest. The tests cover the authentication, jobs, genomes, and users endpoints.
+Tests covering the authentication, jobs, genomes, and users endpoints are included.
 
 To run the tests:
 
