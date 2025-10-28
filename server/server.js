@@ -13,6 +13,15 @@ const startServer = async () => {
         // Middleware
         app.use(express.json());
 
+        // Root endpoint for ECS health checks
+        app.get('/', (req, res) => {
+            res.status(200).json({ 
+                message: 'BLAST App Server is running',
+                version: '1.0.0',
+                timestamp: new Date().toISOString()
+            });
+        });
+
         // API routes
         const authRoutes = require("./routes/api/v1/auth");
         const jobRoutes = require("./routes/api/v1/jobs");
