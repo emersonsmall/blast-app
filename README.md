@@ -1,6 +1,8 @@
 # BLAST App
 
-This application allows users to perform a BLAST search between two organisms. It retrieves the necessary FASTA and GFF files from the NCBI Datasets API and runs an all-vs-all BLAST search to identify the most similar gene between the two species.
+This repo was the final assignment for a cloud computing subject I completed. Manual setup of various AWS services is required, so it is not fully functional on its own.
+
+It allows users to perform a BLAST search between two organisms. It retrieves the necessary FASTA and GFF files from the NCBI Datasets API and runs an all-vs-all BLAST search to identify the most similar gene between the two species.
 
 ## Architecture
 
@@ -11,7 +13,7 @@ The application is containerised and consists of a server and a worker, as defin
 
 ### AWS Services
 
-The application is designed to run on AWS and utilises serveral services:
+The application is designed for AWS and utilises serveral services:
 
   * **S3**: Stores genome files (.GFF and .FASTA).
   * **RDS**: Stores genome and BLAST job metadata.
@@ -68,32 +70,8 @@ The API supports sorting, pagination, and filtering on the `/jobs` and `/genomes
   * `GET /users/:id`: Get a user by their ID.
   * `DELETE /users/:id`: Delete a user by their ID (Admin only).
 
-## Getting Started
-
-### Prerequisites
-
-  * Docker and Docker Compose
-  * Node.js and npm
-  * An AWS account with the required services configured
-
-### Installation
-
-1.  Clone the repository.
-2.  Install the Node.js dependencies:
-    ```bash
-    npm install
-    ```
-3.  Set up the required AWS services, including configuration variables in AWS Parameter Store.
-4.  Build and run the Docker containers (locally or via ECS).
-
 ## API Endpoint Tests
 
 Tests covering the authentication, jobs, genomes, and users endpoints are included.
-
-To run the tests:
-
-```bash
-npm test
-```
 
 Test files are located in the `tests/` directory.
