@@ -24,6 +24,8 @@ let sqsClient;
 let s3Client;
 
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
+// TODO: do not delete genome after getting from genbank (curently re-downloads from S3 in python script). this is artefact from when worker ran in diff container
+// TODO: automate deployment as much as possible using IaC
 
 async function processBlastJob(job) {
     try {
