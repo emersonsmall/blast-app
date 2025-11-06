@@ -1,16 +1,16 @@
 const { Pool } = require('pg');
-const { config } = require('./src/config');
-
-const pool = new Pool({
-    host: config.db.host,
-    port: config.db.port || 5432,
-    user: config.db.user,
-    password: config.db.password,
-    database: config.db.name,
-    ssl: { rejectUnauthorized: false }
-});
+const { loadConfig, config } = require('./src/config');
 
 const dropTables = async () => {
+    const pool = new Pool({
+        host: config.db.host,
+        port: config.db.port || 5432,
+        user: config.db.user,
+        password: config.db.password,
+        database: config.db.name,
+        ssl: { rejectUnauthorized: false }
+    });
+
     const client = await pool.connect();
     try {
         console.log('Connecting to the database...');
@@ -41,4 +41,9 @@ const dropTables = async () => {
     }
 };
 
-dropTables();
+async function main() {
+    await loadConfig();
+    await dropTables();
+}
+
+main().catch(console.error);

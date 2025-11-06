@@ -36,7 +36,7 @@ const createTableQueries = [
         id VARCHAR(50) PRIMARY KEY,
         common_name VARCHAR(255),
         organism_name VARCHAR(255) NOT NULL,
-        total_sequence_length INT NOT NULL,
+        total_sequence_length BIGINT NOT NULL,
         total_gene_count INT NOT NULL
     )`,
     `CREATE TABLE IF NOT EXISTS job_results (

@@ -1,8 +1,8 @@
 # python venv
 venv
 
-# my folders
-data
+/package-lock.json
+/package.json
 
 # Logs
 logs

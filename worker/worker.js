@@ -13,8 +13,6 @@ const unzipper = require("unzipper");
 const { spawn } = require("child_process");
 const os = require("os");
 
-const { GetObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws-sdk/client-sqs");
 
 
@@ -24,8 +22,8 @@ let sqsClient;
 let s3Client;
 
 // TODO: check if job already exists/if results already available for user and taxon pair before creating a new one (HANDLE MULTIPLE REQUESTS GRACEFULLY)
-// TODO: do not delete genome after getting from genbank (curently re-downloads from S3 in python script). this is artefact from when worker ran in diff container
 // TODO: automate deployment as much as possible using IaC
+// TODO: split this file up
 
 async function processBlastJob(job) {
     try {
@@ -86,48 +84,74 @@ async function getGenome(taxon, jobId) {
         if (err.code !== POSTGRES_UNIQUE_VIOLATION) throw err;
     });
 
-    const fastaKey = `${accession}/${accession}.fna`;
-    const gffKey = `${accession}/${accession}.gff`;
+    const genomesBaseDir = path.join(process.cwd(), "genomes");
+    const accessionDir = path.join(genomesBaseDir, accession);
 
-    const fastaExists = await s3ObjectExists(config.aws.s3BucketName, fastaKey);
-    const gffExists = await s3ObjectExists(config.aws.s3BucketName, gffKey);
+    const fastaPath = path.join(accessionDir, `${accession}.fna`);
+    const gffPath = path.join(accessionDir, `${accession}.gff`);
+
+    const fastaExistsLocally = await fileExists(fastaPath);
+    const gffExistsLocally = await fileExists(gffPath);
     
-    if (!fastaExists || !gffExists) {
-        console.log(`Job ${jobId}: Downloading files for ${accession}`);
-        const downloadUrl = `${config.genbankApiBaseUrl}/genome/accession/${accession}/download?include_annotation_type=GENOME_FASTA,GENOME_GFF`;
+    if (!fastaExistsLocally || !gffExistsLocally) {
+        console.log(`Job ${jobId}: Files for ${accession} not found locally, checking S3`);
         
-        const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "blast-"));
-        const zipFilePath = path.join(tempDir, `${accession}.zip`);
+        const fastaKey = `${accession}/${accession}.fna`;
+        const gffKey = `${accession}/${accession}.gff`;
         
-        await downloadFile(downloadUrl, zipFilePath, config.genbankApiKey);
-        
-        // Extract relevant files from ZIP archive
-        console.log(`Job ${jobId}: Unzipping files to ${tempDir}`);
-        await extractFiles(zipFilePath, tempDir);
-        
-        const fastaPath = await findFileByExt(tempDir, ".fna");
-        const gffPath = await findFileByExt(tempDir, ".gff");
-        
-        if (!fastaPath || !gffPath) {
-            throw new Error(`Failed to find GFF or FASTA for accession ${accession}.`);
-        }
-        
-        console.log(`Job ${jobId}: Uploading files to S3`);
-        await uploadFileToS3(config.aws.s3BucketName, fastaKey, fastaPath);
-        await uploadFileToS3(config.aws.s3BucketName, gffKey, gffPath);
+        const fastaExistsS3 = await s3ObjectExists(config.aws.s3BucketName, fastaKey);
+        const gffExistsS3 = await s3ObjectExists(config.aws.s3BucketName, gffKey);
 
-        await fsp.rm(tempDir, { recursive: true, force: true });
+        if (!fastaExistsS3 || !gffExistsS3) {
+            console.log(`Job ${jobId}: Files for ${accession} not found in S3, downloading...`);
+            const downloadUrl = `${config.genbankApiBaseUrl}/genome/accession/${accession}/download?include_annotation_type=GENOME_FASTA,GENOME_GFF`;
+
+            // temp dir for extraction
+            const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "blast-"));
+            const zipFilePath = path.join(tempDir, `${accession}.zip`);
+            
+            try {
+                await downloadFile(downloadUrl, zipFilePath, config.genbankApiKey);
+                
+                console.log(`Job ${jobId}: Extracting files`);
+                await extractFiles(zipFilePath, tempDir);
+                
+                const extractedFasta = await findFileByExt(tempDir, "fna");
+                const extractedGff = await findFileByExt(tempDir, "gff");
+                
+                if (!extractedFasta || !extractedGff) {
+                    throw new Error(`Failed to find GFF or FASTA for accession ${accession}.`);
+                }
+    
+                await fsp.mkdir(accessionDir, {recursive: true});
+                await fsp.rename(extractedFasta, fastaPath);
+                await fsp.rename(extractedGff, gffPath);
+    
+                console.log(`Job ${jobId}: Uploading files to S3`);
+                await uploadFileToS3(config.aws.s3BucketName, fastaKey, fastaPath);
+                await uploadFileToS3(config.aws.s3BucketName, gffKey, gffPath);
+            
+            } finally {
+                await fsp.rm(tempDir, { recursive: true, force: true }).catch(err => {
+                    console.error(`Warning: Failed to remove temp directory ${tempDir}: ${err.message}`);
+                });
+            }
+        
+        } else {
+            console.log(`Job ${jobId}: Downloading files from S3`);
+            await fsp.mkdir(accessionDir, { recursive: true });
+
+            await downloadFromS3(config.aws.s3BucketName, fastaKey, fastaPath);
+            await downloadFromS3(config.aws.s3BucketName, gffKey, gffPath);
+        }
     } else {
-        console.log(`Job ${jobId}: FASTA and GFF files already exist in S3.`);
+        console.log(`Job ${jobId}: Using existing files for ${accession}`);
     }
 
-    const fastaCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: fastaKey });
-    const fastaUrl = await getSignedUrl(s3Client, fastaCmd, { expiresIn: 3600 });
-
-    const gffCmd = new GetObjectCommand({ Bucket: config.aws.s3BucketName, Key: gffKey });
-    const gffUrl = await getSignedUrl(s3Client, gffCmd, { expiresIn: 3600 });
-
-    return { fastaUrl, gffUrl, accession };
+    return {
+        accessionDir,
+        accession
+    };
 }
 
 
@@ -135,10 +159,8 @@ function runBlast(queryGenome, targetGenome, jobId) {
     return new Promise((resolve, reject) => {
         const args = [
             "worker/blast_workflow.py",
-            queryGenome.fastaUrl,
-            queryGenome.gffUrl,
-            targetGenome.fastaUrl,
-            targetGenome.gffUrl,
+            queryGenome.accessionDir,
+            targetGenome.accessionDir,
             jobId.toString()
         ];
 
@@ -175,13 +197,24 @@ function runBlast(queryGenome, targetGenome, jobId) {
 async function findFileByExt(dir, ext) {
     try {
         const files = await fsp.readdir(dir);
-        const foundFile = files.find(file => file.endsWith(ext));
+        const foundFile = files.find(file => file.endsWith(`.${ext}`));
         return foundFile ? path.join(dir, foundFile) : null;
     } catch (err) {
         console.error(`Error reading directory ${dir}: ${err.message}`);
         return null;
     }
 }
+
+
+async function fileExists(path) {
+    try {
+        await fsp.access(path);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 
 /**
  * Extracts .fna and .gff files from a ZIP archive to the specified directory.
@@ -221,6 +254,21 @@ function apiRequest(url, apiKey) {
     }).on('error', err => reject(err));
   });
 }
+
+
+async function downloadFromS3(bucket, key, destPath) {
+    const { GetObjectCommand } = require("@aws-sdk/client-s3");
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key});
+    const resp = await s3Client.send(command);
+
+    const writeStream = fs.createWriteStream(destPath);
+    await new Promise((resolve, reject) => {
+        resp.Body.pipe(writeStream)
+            .on("finish", resolve)
+            .on("error", reject);
+    });
+}
+
 
 /**
  * Downloads a file from a URL, handling redirects
